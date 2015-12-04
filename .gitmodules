@@ -1,0 +1,4 @@
+[submodule "pkgs/RItools"]
+	path = pkgs/RItools
+	url = git@github.com:markmfredrickson/RItools.git
+	branch = randomization-distribution
