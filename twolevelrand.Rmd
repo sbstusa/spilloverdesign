@@ -1,0 +1,71 @@
+---
+title: Two level randomization 
+author: Jake
+date: 4 Dec 2015
+---
+
+This file produces a two-level randomization following the general ideas from
+Ichino and Schuendeln (2012) which in turn draws from Sinclair, McConnell,
+Green (2012).
+
+```{r setup}
+.libPaths("libraries")
+library(RItools)
+source("code/two-level-sampler.R")
+```
+
+Imagine that we have 10 large upper-level units (like counties or states) and
+each of these upper-level units have 50 lower-level units within it. Here, for
+an example, half of the upper-level units will be assigned to contain treated
+lower-level units. And have of the individuals within the treatment eligible
+lower-level units will be assigned treatment.
+
+First, set up the values in the experiment:
+```{r}
+numUpperBlocks<-10
+lowerBlockSize<-20
+upperBlockSizes <- rep( 4 , numUpperBlocks)
+numLowerBlocks<-sum(upperBlockSizes) ## 10 upper-level units each containing 10 lower-level units 
+lowerBlockSizes <- rep(lowerBlockSize,numLowerBlocks)
+N<-sum(lowerBlockSizes)
+
+upid<-rep(rep(1:4,numUpperBlocks),lowerBlockSizes)
+lowid<-rep(1:lowerBlockSize,numUpperBlocks)
+
+## Make a fake dataset
+dat<-data.frame(lowid=rep(lowerBlockSizes,lowerBlockSizes),
+		upid=rep()
+
+numTrtedUpperBlock <- upperBlockSizes/2
+numTrtedLowerBlock <- lowerBlockSizes/2
+```
+
+Second, define the "sampler" (i.e. the randomizer, the function which does the random assignment).
+```{r}
+twoLevelSampler <- upperLowerSampler(upperBlockSize = upperBlockSizes,
+				     treatedUpper   = numTrtedUpperBlock,
+				     lowerBlockSize = lowerBlockSizes,
+				     treatedLower   = numTrtedLowerBlock)
+```
+
+Third, try it out. The command `twoLevelSampler(1)` generates one random
+assignment following that design. If we wanted lots of random assignments
+because we were using re-randomization for covariate balance or to do
+statistical testing or assessment of our statistical procedures, we would use
+numbers other than 1 in the parenthesis.
+
+```{r}
+set.seed(20151204)
+
+Z1<-twoLevelSampler(1)
+str(Z1)
+
+```
+
+Fourth, test the code.  What should be true if this randomization followed the design?
+
+```{r}
+
+
+
+```
