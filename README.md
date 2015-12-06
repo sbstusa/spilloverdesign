@@ -3,19 +3,19 @@ A repository with code to produce and evaluate experimental designs to estimate 
 
 ## Setup
 
-Before using the code int he To get this code you will need to
+To get this code you can either 
 [clone](https://help.github.com/articles/cloning-a-repository/) this repository
-to your computer. Or download a zip file of the repository using one of the
-buttons on the github website screen You should then download the pre-release
-version of RItools
-<https://github.com/markmfredrickson/RItools/releases/download/rand-dist-v1.0/RItools_0.1-12.tar.gz>
-into that new directory.
+to your computer or download a zip file of the repository using one of the
+buttons on the github website screen.
 
-Before installing it, you'll need to install some of the dependencies of this
-version of RItools by hand because we haven't released it yet to CRAN. The
-following code creates a local libraries directory so that this process does
-not overwrite any other R libraries you may have installed on your system. I
-hope that these commands work on Windows as well as on Unix/OS X based systems.
+
+The code here relies on a pre-release version of RItools
+<https://github.com/markmfredrickson/RItools>. Because it is not on CRAN it
+requires a little work to install. I hope that the following commands work to
+install it plus its dependencies. The following code creates a local libraries
+directory so that this process does not overwrite any other R libraries you may
+have installed on your system. I hope that these commands work on Windows as
+well as on Unix/OS X based systems.
 
 ```
 dir.create("libraries")
@@ -25,7 +25,18 @@ download.file("https://github.com/markmfredrickson/RItools/releases/download/ran
 install.packages("RItools_0.1-12.tar.gz")
 ```
 
+The easiest way to make an html or pdf document from the .Rmd file is to use the rmarkdown library. I think it may be pre-installed in RStudio such that you can just click on the `Knit HTML` button in RStudio. If you are not using RStudio, you'll need to install rmarkdown first:
 
+```
+install('rmarkdown',dependencies=TRUE)
+```
 
+And then you can use the `render` function:
+
+```
+render("twolevelrand.Rmd") ## for an html document
+render("twolevelrand.Rmd",output_format=pdf_document())
+
+```
 
 

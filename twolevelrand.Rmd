@@ -4,11 +4,40 @@ author: Jake
 date: 4 Dec 2015
 ---
 
-This file produces a two-level randomization following the general ideas from
+This file produces a two-level randomization to illustrate the general ideas from
 Ichino and Schuendeln (2012) which in turn draws from Sinclair, McConnell,
-Green (2012).
+Green (2012).^[To make a html document from this file, do `library(rmarkdown);render("twolevelrand.Rmd")` or click on the `Knit HTML` in
+RStudio --- see the help file for `render` to make a pdf document.]
 
-```{r setup}
+```{r include=FALSE, cache=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+# knitr settings to control how R chunks work.
+
+## To make the html file do
+## render("twolevelrand.Rmd",output_format=html_document(fig_retina=FALSE))
+## To make the pdf file do
+## render("twolevelrand.Rmd",output_format=pdf_document())
+
+require(knitr)
+opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small",    # slightly smaller font for code
+  echo=TRUE,
+  results='markup',
+  strip.white=TRUE,
+  fig.path='figs/fig',
+  cache=FALSE,
+  highlight=TRUE,
+  width.cutoff=132,
+  size='footnotesize',
+  out.width='.9\\textwidth',
+  message=FALSE,
+  comment=NA,
+  fig.retina=FALSE)
+```
+
+
+```{r getready}
 .libPaths("libraries")
 library(RItools)
 source("code/two-level-sampler.R")
@@ -20,32 +49,84 @@ an example, half of the upper-level units will be assigned to contain treated
 lower-level units. And have of the individuals within the treatment eligible
 lower-level units will be assigned treatment.
 
-First, set up the values in the experiment:
+First, set up the values in the experiment. The units:
+
+   - states: 10 of them, each containing 4 counties, randomly assign one county to contain treated and control farmers, the other three counties only contain control farmers.
+   - counties: 10*4=40 of them, each containing between 10 and 50 farmers.
+   - farmers: within treated counties, assign half of the farmers to treatment.
+
+
 ```{r}
-numUpperBlocks<-10
-lowerBlockSize<-20
-upperBlockSizes <- rep( 4 , numUpperBlocks)
-numLowerBlocks<-sum(upperBlockSizes) ## 10 upper-level units each containing 10 lower-level units 
-lowerBlockSizes <- rep(lowerBlockSize,numLowerBlocks)
-N<-sum(lowerBlockSizes)
+set.seed(20151204)
 
-upid<-rep(rep(1:4,numUpperBlocks),lowerBlockSizes)
-lowid<-rep(1:lowerBlockSize,numUpperBlocks)
+numStates<-10 ## like states
+countiesPerState<-4
+stateSizes <- rep( countiesPerState , numStates)
 
-## Make a fake dataset
-dat<-data.frame(lowid=rep(lowerBlockSizes,lowerBlockSizes),
-		upid=rep()
+countySizesMat<-sapply(stateSizes,function(ncounties){
+		      trunc(runif(ncounties,min=10,max=50))
+})
+colnames(countySizesMat)<-paste("state",1:numStates,sep="")
+rownames(countySizesMat)<-paste("county",1:countiesPerState,sep="")
 
-numTrtedUpperBlock <- upperBlockSizes/2
-numTrtedLowerBlock <- lowerBlockSizes/2
+countySizes<-as.vector(countySizesMat)
+
+N<-sum(countySizes)
+
+farmerid<-1:N
+countyid<-rep(rep(1:countiesPerState,numStates),countySizes)
+stateid<-rep(1:numStates,colSums(countySizesMat))
+statecountyid<-paste(stateid,countyid,sep=".")
+## Make a fake dataset:
+dat<-data.frame(farmerid=farmerid,
+		countyid=countyid,
+		stateid=stateid)
+dat$statecountyid<-factor(statecountyid,
+			  levels=unique(statecountyid))
+
+## Make sure that we can re-create the list of county sizes (number of farmers within counties)
+stopifnot(all.equal(as.vector(table(dat$statecountyid)),countySizes))
+## How many people within each county (first, second, third ... )
+table(dat$countyid)
+## How many people within each state
+table(dat$stateid)
+```
+
+Add some fake covariates to demonstrate randomization testing below. So far we are not blocking, but I imagine that we would just run the assignment separately within each block.
+
+```{r}
+
+## A variable with constant variance but different means by country
+countymeans<-rnorm(length(countySizes))
+dat$x1<-unsplit(lapply(split(dat,dat$statecountyid),function(d){
+			 rnorm(nrow(d),mean=countymeans) }),dat$statecountyid)
+
+## A binary variable with no relationship to county per se
+dat$x2<-rbinom(nrow(dat),size=1,prob=.33)
+
+## The size of the county as a covariate
+dat$countySize<-unsplit(table(dat$statecountyid),statecountyid)
+
+```
+
+Define the number of counties eligible for any treatment assignment within each state. Here, with 4 counties in the experiment per state, we assign only one of them to receive treatments.
+
+```{r}
+numTrtedState <- rep(1,length(stateSizes)) 
+```
+
+Define the number of farmers within each county eligible for treatment assignment. Here, for now, assign half of the farmers in each treatment-eligible county to treatment.
+
+```{r}
+numTrtedCounty <- floor(countySizes/2)
 ```
 
 Second, define the "sampler" (i.e. the randomizer, the function which does the random assignment).
 ```{r}
-twoLevelSampler <- upperLowerSampler(upperBlockSize = upperBlockSizes,
-				     treatedUpper   = numTrtedUpperBlock,
-				     lowerBlockSize = lowerBlockSizes,
-				     treatedLower   = numTrtedLowerBlock)
+twoLevelSampler <- upperLowerSampler(upperBlockSize = stateSizes,
+				     treatedUpper   = numTrtedState,
+				     lowerBlockSize = countySizes,
+				     treatedLower   = numTrtedCounty)
 ```
 
 Third, try it out. The command `twoLevelSampler(1)` generates one random
@@ -56,16 +137,88 @@ numbers other than 1 in the parenthesis.
 
 ```{r}
 set.seed(20151204)
-
 Z1<-twoLevelSampler(1)
 str(Z1)
-
+dat$Z1<-Z1$samples
 ```
 
 Fourth, test the code.  What should be true if this randomization followed the design?
 
+One county and only one county per state should have any treated units:
+
 ```{r}
 
+test1tabs<-lapply(split(dat,dat$stateid),function(d){
+	 table(d$Z1,d$countyid) })
 
+## Each state should have only 1 county with any treated units
+test1<-sapply(test1tabs,function(tab){ sum(tab[2,]!=0) })
+stopifnot(all(test1==1))
 
 ```
+
+Within treated counties, roughly half of the farmers should be assigned to
+treatment. The following table shows only one county per state assigned to any
+treatment, and roughly half of the farmers in that county assigned to
+treatment.
+
+```{r}
+
+tmp<-with(dat,table(Z1,statecountyid))
+tmp
+test2tab<-tmp[,tmp["1",]!=0]
+test2<-test2tab[2,]/colSums(test2tab)
+test2
+## We cannot guarantee exactly half, so just make sure it is around .5
+stopifnot(all(test2>.4 & test2<.6))
+```
+
+# Randomization Balance Assessment
+
+Assess whether or not the randomization is balanced (it really should be, and
+should pass the other tests, too, but it is reasonable to check.) This is a bit
+complicated because of the two-level randomization. However, we can get some
+rough ideas in a couple of ways. First, we can look at certain covariates alone
+using the randomization distribution arising directly from re-assigning
+treatment following the two level design above 1000 times.
+
+
+```{r}
+
+ritx1<-RItest(y=dat$x1, z=dat$Z1, test.stat=mean.difference, sampler=twoLevelSampler, samples=1000)
+ritx2<-RItest(y=dat$x2, z=dat$Z1, test.stat=mean.difference, sampler=twoLevelSampler, samples=1000)
+
+## P-values from the randomization distribution 
+c(ritx1, ritx2)
+```
+
+Second, we can use a Normal theory/Large-sample approximation if we pretended
+that we didn't have two level randomization but one level blocked by county
+within state:
+
+
+```{r}
+xb1<-xBalance(Z1~x1+x2,strata=list(statecounty=~statecountyid),
+	      data=dat,report="all")
+
+```
+
+
+First, look at the omnibus test: across all covariates, how much information do we have against the hypothesis that this design was randomized. (The design, is that farmers were randomly assigned treatment within counties and states with equal probability.)
+
+```{r}
+xb1$overall
+```
+
+Next look for some more descriptive information about whether the covariates
+were balanced. Not looking at the one-by-one p-values except as descriptive
+information (since, often, we have many covariates and don't want to look at
+many many tests).
+
+```{r}
+xb1$results
+```
+
+# Estimation of treatment effects
+
+# Testing of hypotheses about causal effects
