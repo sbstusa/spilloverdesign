@@ -1,0 +1,7 @@
+---
+title:
+author:
+date:
+---
+
+A randomized saturation design is like the simple two-level design but involves random assignment of proportion treated to counties, or random assignment of "saturation" of the treatment.^[We follow Baird, et al 2014 <gps.ucsd.edu/_files/faculty/mcintosh/mcintosh_research_spillover.pdf>] For example, we might randomly assign counties to receive between 0% treated (i.e. the "pure control" counties in the two-level design) and 100% treated, with some saturations in between (like 33%, 50%, 66%, etc.). 
