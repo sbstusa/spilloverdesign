@@ -6,6 +6,7 @@ published: true
 ---
 
 
+
 A randomized saturation design is like the simple two-level design but involves random assignment of proportion treated to counties, or random assignment of "saturation" of the treatment.^[We follow Baird, et al 2014 <gps.ucsd.edu/_files/faculty/mcintosh/mcintosh_research_spillover.pdf>] For example, we might randomly assign counties to receive between 0% treated (i.e. the "pure control" counties in the two-level design) and 100% treated, with some saturations in between (like 33%, 50%, 66%, etc.).
 
 This design raises a couple of new questions for us.
@@ -28,7 +29,12 @@ Within blocks, we know that we want at least one county at saturation 0% (i.e th
 
 # Power
 
+We have two main effects: the ITT (whereby we compare treated to pure control individuals), the Spillover on the Non-Treated (SNT) (whereby we compare non-treated individuals in a county with some saturation $\pi>0$ to pure control individuals (people in counties with $\pi=0$).
+
 The power of the design will depend on overall experimental pool $N$ (roughly 3 million); number treated $n_t$; the variation in the outcome, $Y$; the size of the direct effect of treatment; the size of the spillover effect; the intra-county dependence (measured by the intra-cluster correlation coefficient (ICC)); and the correlation between treatment status within counties.
 
+## A Note on Inferential Frameworks
+
+The Blair et al 2014 piece uses a random effects/model-based mode for statistical inference. They claim that this very much simplifies the work required for power analysis. Although, in general, I tend to advocate randomization inference for randomized experiments, I suspect that we might gain from following their lead here, especially since our total pool of units is so large --- that the concerns about consistency and the CLT that one sidesteps with randomization infeerence in its permutation form might not be that important. That said, we might still want to check our results using a more direct randomization inference approach if we have few saturation categories.
 
 
