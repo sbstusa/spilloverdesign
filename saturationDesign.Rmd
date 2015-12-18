@@ -1,22 +1,21 @@
 ---
-title: null
-author: null
-date: null
+title: Notes on a Randomized Saturation Design
+author: Jake Bowers
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
+bibliography: bibliography.bib
 published: true
 ---
 
 
 
-A randomized saturation design is like the simple two-level design but involves random assignment of proportion treated to counties, or random assignment of "saturation" of the treatment.^[We follow Baird, et al 2014 <gps.ucsd.edu/_files/faculty/mcintosh/mcintosh_research_spillover.pdf>] For example, we might randomly assign counties to receive between 0% treated (i.e. the "pure control" counties in the two-level design) and 100% treated, with some saturations in between (like 33%, 50%, 66%, etc.).
+A randomized saturation design is like the simple two-level design but involves random assignment of proportion treated to counties, or random assignment of "saturation" of the treatment.^[We follow @baird2015designing, who in turn build on @sinclair2012detecting, among others.]  For example, we might randomly assign counties to receive between 0% treated (i.e. the "pure control" counties in the two-level design) and 100% treated, with some saturations in between (like 33%, 50%, 66%, etc.).
 
-This design raises a couple of new questions for us.
-If our total number of treatments is fixed at $n_t$, then, to maximize power and enhance interpretibility:
-How many saturation categories should we use? How many counties should we choose? 
+This design raises a couple of new questions for us.  If our total number of treatments is fixed at $n_t$, then, to maximize power and enhance interpretibility: How many saturation categories should we use? How many counties should we choose?
 
 # Blocks
 
 ## State
-We will block first on state because the agricultural outcomes and farmer behavior will vary by state. We expect, that the relationship between microloans applications, spillover, and other outcomes, might also vary by state (in part as a proxy for ecosystem/type of agriculture and in part as a proxy for other influences that states have on agricultural production).
+We will block first on state because the agricultural outcomes and farmer behavior will vary by state. We expect, that the relationship between microloans applications, spillover, and other outcomes, might also vary by state (in part as a proxy for ecosystem/type of agriculture and in part as a proxy for other influences that states have on agricultural production). Also, since counties tend to have the same land area size within a state, but vary greatly in land area across states, we expect different patterns in spillover by state --- assigning treatment to 50% of the farmers in one large county might incur different spillover than 50% of the farmers in a smaller county.
 
 ## County Size (number of farmers)
 If we are randomly assigning counties to saturation, we should also probably should assign saturation to sets of counties that are similar in number of farmers within them. Across many counties, the distribution of county size should be balanced across saturation treatments, in expectation, but in our finite sample, we think that we will enhance power and make comparisons easier to understand if, within states, we randomly assign saturation within blocks of similar counties (with number of farmers within the county being a key covariate, but perhaps there are others that matter as well).
@@ -31,10 +30,30 @@ Within blocks, we know that we want at least one county at saturation 0% (i.e th
 
 We have two main effects: the ITT (whereby we compare treated to pure control individuals), the Spillover on the Non-Treated (SNT) (whereby we compare non-treated individuals in a county with some saturation $\pi>0$ to pure control individuals (people in counties with $\pi=0$).
 
-The power of the design will depend on overall experimental pool $N$ (roughly 3 million); number treated $n_t$; the variation in the outcome, $Y$; the size of the direct effect of treatment; the size of the spillover effect; the intra-county dependence (measured by the intra-cluster correlation coefficient (ICC)); and the correlation between treatment status within counties.
+The power of the design will depend on overall experimental pool $N$ (roughly 3 million); number treated $n_t$; the variation in the outcome, $Y$; the size of the direct effect of treatment; the size of the spillover effect; the intra-county dependence (measured by the intra-cluster correlation coefficient (ICC)); and the correlation between treatment status within counties. The Baird et al 2015 piece provides 
 
 ## A Note on Inferential Frameworks
 
-The Blair et al 2014 piece uses a random effects/model-based mode for statistical inference. They claim that this very much simplifies the work required for power analysis. Although, in general, I tend to advocate randomization inference for randomized experiments, I suspect that we might gain from following their lead here, especially since our total pool of units is so large --- that the concerns about consistency and the CLT that one sidesteps with randomization infeerence in its permutation form might not be that important. That said, we might still want to check our results using a more direct randomization inference approach if we have few saturation categories.
+The Blair et al 2015 piece uses a random effects/model-based mode for statistical inference. They claim that this very much simplifies the work required for power analysis. Although, in general, I tend to advocate randomization inference for randomized experiments, I suspect that we might gain from following their lead here, especially since our total pool of units is so large --- that the concerns about consistency and the CLT that one sidesteps with randomization infeerence in its permutation form might not be that important. That said, we might still want to check our results using a more direct randomization inference approach if we have few saturation categories.
 
 
+# What do our data look like?
+
+The following reads the data from Google Drive, assuming that there is a Google Sheet called "county-counts.csv" in your sheets directory.
+
+```{r}
+library(googlesheets)
+countyCountsGS<-gs_title("county-counts.csv") ## get info about the data
+countyCounts<-gs_read_csv(countyCountsGS)
+str(countyCounts)
+```
+
+```{r}
+sapply(countyCounts,function(x){ sum(is.na(x) | x=="" ) })
+with(countyCounts,tapply(n,state,sum)) ## N by state
+with(countyCounts,tapply(county,state,function(x){ length(unique(x) ) })) ## number of counties by state
+summary(with(countyCounts,tapply(n,county,sum))) ## number of farmers by county
+sapply(split(countyCounts$n,countyCounts$state),function(x){ summary(x) }) ## dist of county sizes by state
+```
+
+# References
