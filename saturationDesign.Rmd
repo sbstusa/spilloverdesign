@@ -6,9 +6,7 @@ bibliography: bibliography.bib
 published: true
 ---
 
-
-
-A randomized saturation design is like the simple two-level design but involves random assignment of proportion treated to counties, or random assignment of "saturation" of the treatment.^[We follow @baird2015designing, who in turn build on @sinclair2012detecting, among others.]  For example, we might randomly assign counties to receive between 0% treated (i.e. the "pure control" counties in the two-level design) and 100% treated, with some saturations in between (like 33%, 50%, 66%, etc.).
+A randomized saturation design is like the simple two-level design that we describe in [twolevelrand.Rmd](twolevelrand.Rmd) but involves random assignment of proportion treated to counties, or random assignment of "saturation" of the treatment.^[We follow @baird2015designing, who in turn build on @sinclair2012detecting, among others.]  For example, we might randomly assign counties to receive between 0% treated (i.e. the "pure control" counties in the two-level design) and 100% treated, with some saturations in between (like 33%, 50%, 66%, etc.).
 
 This design raises a couple of new questions for us.  If our total number of treatments is fixed at $n_t$, then, to maximize power and enhance interpretibility: How many saturation categories should we use? How many counties should we choose?
 

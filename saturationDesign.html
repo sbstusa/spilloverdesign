@@ -68,7 +68,7 @@ img {
 </div>
 
 
-<p>A randomized saturation design is like the simple two-level design but involves random assignment of proportion treated to counties, or random assignment of “saturation” of the treatment.<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a> For example, we might randomly assign counties to receive between 0% treated (i.e. the “pure control” counties in the two-level design) and 100% treated, with some saturations in between (like 33%, 50%, 66%, etc.).</p>
+<p>A randomized saturation design is like the simple two-level design that we describe in <a href="twolevelrand.Rmd" class="uri">twolevelrand.Rmd</a> but involves random assignment of proportion treated to counties, or random assignment of “saturation” of the treatment.<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a> For example, we might randomly assign counties to receive between 0% treated (i.e. the “pure control” counties in the two-level design) and 100% treated, with some saturations in between (like 33%, 50%, 66%, etc.).</p>
 <p>This design raises a couple of new questions for us. If our total number of treatments is fixed at <span class="math">\(n_t\)</span>, then, to maximize power and enhance interpretibility: How many saturation categories should we use? How many counties should we choose?</p>
 <div id="blocks" class="section level1">
 <h1>Blocks</h1>
@@ -102,7 +102,8 @@ img {
 <p>The following reads the data from Google Drive, assuming that there is a Google Sheet called “county-counts.csv” in your sheets directory.</p>
 <pre class="r"><code>library(googlesheets)
 countyCountsGS&lt;-gs_title(&quot;county-counts.csv&quot;) ## get info about the data</code></pre>
-<pre><code>## Sheet successfully identifed: &quot;county-counts.csv&quot;</code></pre>
+<pre><code>## Auto-refreshing stale OAuth token.
+## Sheet successfully identifed: &quot;county-counts.csv&quot;</code></pre>
 <pre class="r"><code>countyCounts&lt;-gs_read_csv(countyCountsGS)</code></pre>
 <pre><code>## Accessing worksheet titled &quot;county-counts.csv&quot;</code></pre>
 <pre class="r"><code>str(countyCounts)</code></pre>
