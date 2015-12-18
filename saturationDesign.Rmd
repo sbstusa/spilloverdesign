@@ -1,7 +1,19 @@
 ---
-title:
-author:
-date:
+title: null
+author: null
+date: null
+published: true
 ---
 
-A randomized saturation design is like the simple two-level design but involves random assignment of proportion treated to counties, or random assignment of "saturation" of the treatment.^[We follow Baird, et al 2014 <gps.ucsd.edu/_files/faculty/mcintosh/mcintosh_research_spillover.pdf>] For example, we might randomly assign counties to receive between 0% treated (i.e. the "pure control" counties in the two-level design) and 100% treated, with some saturations in between (like 33%, 50%, 66%, etc.). 
+
+A randomized saturation design is like the simple two-level design but involves random assignment of proportion treated to counties, or random assignment of "saturation" of the treatment.^[We follow Baird, et al 2014 <gps.ucsd.edu/_files/faculty/mcintosh/mcintosh_research_spillover.pdf>] For example, we might randomly assign counties to receive between 0% treated (i.e. the "pure control" counties in the two-level design) and 100% treated, with some saturations in between (like 33%, 50%, 66%, etc.).
+
+This design raises a couple of new questions for us.
+If our total number of treatments is fixed at $n_t$, then, to maximize power and enhance interpretibility:
+How many saturation categories should we use? How many counties should we choose? 
+
+# Blocks
+We will block first on state because the agricultural outcomes and farmer behavior will vary by state. We expect, that the relationship between microloans applications, spillover, and other outcomes, might also vary by state (in part as a proxy for ecosystem/type of agriculture and in part as a proxy for other influences that states have on agricultural production).
+
+If we are randomly assigning counties to saturation, we should also probably should assign saturation to sets of counties that are similar in number of farmers within them. Across many counties, the distribution of county size should be balanced across saturation treatments, in expectation, but in our finite sample, we think that we will enhance power and make comparisons easier to understand if, within states, we randomly assign saturation within blocks of similar counties (with number of farmers within the county being a key covariate, but perhaps there are others that matter as well).
+
