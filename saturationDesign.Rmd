@@ -26,3 +26,9 @@ If we are randomly assigning counties to saturation, we should also probably sho
 
 Within blocks, we know that we want at least one county at saturation 0% (i.e the "pure control") condition.
 
+# Power
+
+The power of the design will depend on overall experimental pool $N$ (roughly 3 million); number treated $n_t$; the variation in the outcome, $Y$; the size of the direct effect of treatment; the size of the spillover effect; the intra-county dependence (measured by the intra-cluster correlation coefficient (ICC)); and the correlation between treatment status within counties.
+
+
+
