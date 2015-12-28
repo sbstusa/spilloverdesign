@@ -10,7 +10,7 @@
 
 <meta name="author" content="Jake Bowers" />
 
-<meta name="date" content="2015-12-18" />
+<meta name="date" content="2015-12-28" />
 
 <title>Notes on a Randomized Saturation Design</title>
 
@@ -64,7 +64,7 @@ img {
 <div id="header">
 <h1 class="title">Notes on a Randomized Saturation Design</h1>
 <h4 class="author"><em>Jake Bowers</em></h4>
-<h4 class="date"><em>December 18, 2015</em></h4>
+<h4 class="date"><em>December 28, 2015</em></h4>
 </div>
 
 
@@ -101,77 +101,74 @@ img {
 <h1>What do our data look like?</h1>
 <p>The following reads the data from Google Drive, assuming that there is a Google Sheet called “county-counts.csv” in your sheets directory.</p>
 <pre class="r"><code>library(googlesheets)
-countyCountsGS&lt;-gs_title(&quot;county-counts.csv&quot;) ## get info about the data</code></pre>
-<pre><code>## Auto-refreshing stale OAuth token.
-## Sheet successfully identifed: &quot;county-counts.csv&quot;</code></pre>
-<pre class="r"><code>countyCounts&lt;-gs_read_csv(countyCountsGS)</code></pre>
-<pre><code>## Accessing worksheet titled &quot;county-counts.csv&quot;</code></pre>
-<pre class="r"><code>str(countyCounts)</code></pre>
-<pre><code>## Classes 'tbl_df', 'tbl' and 'data.frame':    3363 obs. of  4 variables:
-##  $ X     : int  1 2 3 4 5 6 7 8 9 10 ...
-##  $ state : chr  &quot;AK&quot; &quot;AK&quot; &quot;AK&quot; &quot;AK&quot; ...
-##  $ county: chr  &quot;Aleutians East&quot; &quot;Aleutians West&quot; &quot;Anchorage&quot; &quot;Benton&quot; ...
-##  $ n     : int  8 7 930 2 17 6 25 21 422 1 ...</code></pre>
+countyCountsGS&lt;-gs_title(&quot;county-counts.csv&quot;) ## get info about the data
+countyCounts&lt;-gs_read_csv(countyCountsGS)
+str(countyCounts)</code></pre>
+<pre><code>Classes 'tbl_df', 'tbl' and 'data.frame':   3363 obs. of  4 variables:
+ $ X     : int  1 2 3 4 5 6 7 8 9 10 ...
+ $ state : chr  &quot;AK&quot; &quot;AK&quot; &quot;AK&quot; &quot;AK&quot; ...
+ $ county: chr  &quot;Aleutians East&quot; &quot;Aleutians West&quot; &quot;Anchorage&quot; &quot;Benton&quot; ...
+ $ n     : int  8 7 930 2 17 6 25 21 422 1 ...</code></pre>
 <pre class="r"><code>sapply(countyCounts,function(x){ sum(is.na(x) | x==&quot;&quot; ) })</code></pre>
-<pre><code>##      X  state county      n 
-##      0      0      0      0</code></pre>
+<pre><code>     X  state county      n 
+     0      0      0      0 </code></pre>
 <pre class="r"><code>with(countyCounts,tapply(n,state,sum)) ## N by state</code></pre>
-<pre><code>##     AK     AL     AR     AZ     CA     CO     CT     DE     FL     GA 
-##   3330  69979  56139  24649  71932  49230   4643   6254  60993  75985 
-##     HI     IA     ID     IL     IN     KS     KY     LA     MA     MD 
-##   3479 137252  27353 145738 108542 104116 134013  55057   8262  25891 
-##     ME     MI     MN     MO     MS     MT     NC     ND     NE     NH 
-##   9333  85599 117255 109653  69699  42221 156017  51032  86328   3565 
-##     NJ     NM     NV     NY     OH     OK     OR     PA     RI     SD 
-##  20480  19483   6065  43250 126956  68605  36829  60822   1271  50685 
-##     TN     TX     UT     VA     VT     WA     WI     WV     WY 
-## 121912 293867  13889  86890   7611  49918 156940  18243  11811</code></pre>
+<pre><code>    AK     AL     AR     AZ     CA     CO     CT     DE     FL     GA 
+  3330  69979  56139  24649  71932  49230   4643   6254  60993  75985 
+    HI     IA     ID     IL     IN     KS     KY     LA     MA     MD 
+  3479 137252  27353 145738 108542 104116 134013  55057   8262  25891 
+    ME     MI     MN     MO     MS     MT     NC     ND     NE     NH 
+  9333  85599 117255 109653  69699  42221 156017  51032  86328   3565 
+    NJ     NM     NV     NY     OH     OK     OR     PA     RI     SD 
+ 20480  19483   6065  43250 126956  68605  36829  60822   1271  50685 
+    TN     TX     UT     VA     VT     WA     WI     WV     WY 
+121912 293867  13889  86890   7611  49918 156940  18243  11811 </code></pre>
 <pre class="r"><code>with(countyCounts,tapply(county,state,function(x){ length(unique(x) ) })) ## number of counties by state</code></pre>
-<pre><code>##  AK  AL  AR  AZ  CA  CO  CT  DE  FL  GA  HI  IA  ID  IL  IN  KS  KY  LA 
-##  36  73  89  26  70  72   9   3  79 166   5 103  51 113  99 110 122  70 
-##  MA  MD  ME  MI  MN  MO  MS  MT  NC  ND  NE  NH  NJ  NM  NV  NY  OH  OK 
-##  18  28  22  86  91 122  92  62 115  58  96  11  25  37  20  68  92  81 
-##  OR  PA  RI  SD  TN  TX  UT  VA  VT  WA  WI  WV  WY 
-##  37  69   5  70 106 263  31 138  16  47  76  58  27</code></pre>
+<pre><code> AK  AL  AR  AZ  CA  CO  CT  DE  FL  GA  HI  IA  ID  IL  IN  KS  KY  LA 
+ 36  73  89  26  70  72   9   3  79 166   5 103  51 113  99 110 122  70 
+ MA  MD  ME  MI  MN  MO  MS  MT  NC  ND  NE  NH  NJ  NM  NV  NY  OH  OK 
+ 18  28  22  86  91 122  92  62 115  58  96  11  25  37  20  68  92  81 
+ OR  PA  RI  SD  TN  TX  UT  VA  VT  WA  WI  WV  WY 
+ 37  69   5  70 106 263  31 138  16  47  76  58  27 </code></pre>
 <pre class="r"><code>summary(with(countyCounts,tapply(n,county,sum))) ## number of farmers by county</code></pre>
-<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-##       1     440     922    1697    1777   37860</code></pre>
+<pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+      1     440     922    1697    1777   37860 </code></pre>
 <pre class="r"><code>sapply(split(countyCounts$n,countyCounts$state),function(x){ summary(x) }) ## dist of county sizes by state</code></pre>
-<pre><code>##             AK     AL     AR     AZ   CA     CO    CT   DE     FL     GA
-## Min.      1.00    1.0    1.0    1.0    1    1.0   1.0  990    1.0    1.0
-## 1st Qu.   3.75  471.0  293.0    1.0  185  124.5 282.0 1092  266.0  200.5
-## Median   13.50  829.0  574.0  143.5  716  296.5 578.0 1195  562.0  366.5
-## Mean     92.50  958.6  630.8  948.0 1028  683.8 515.9 2085  772.1  457.7
-## 3rd Qu.  46.75 1246.0  803.0  794.8 1474  897.8 675.0 2632 1102.0  572.0
-## Max.    930.00 2848.0 3187.0 9382.0 6876 3606.0 887.0 4069 3436.0 2811.0
-##             HI   IA     ID   IL   IN     KS     KY     LA     MA     MD
-## Min.       1.0    1    1.0    1    1    1.0    1.0    1.0    1.0    1.0
-## 1st Qu.  400.0  864  167.0  700  749  401.8  611.8  260.2   19.5  554.5
-## Median   700.0 1195  400.0 1076 1103  641.5  921.0  445.5  440.0  750.0
-## Mean     695.8 1333  536.3 1290 1096  946.5 1098.0  786.5  459.0  924.7
-## 3rd Qu.  980.0 1586  779.5 1686 1404 1135.0 1372.0 1181.0  661.0 1122.0
-## Max.    1398.0 5986 2132.0 8248 3133 8574.0 4443.0 3767.0 1270.0 2425.0
-##              ME     MI     MN     MO     MS     MT   NC     ND     NE
-## Min.       1.00    1.0    1.0    1.0    1.0    1.0    1    1.0    1.0
-## 1st Qu.   43.25  248.2  756.5  479.8  441.0  200.5  437  333.2  372.5
-## Median   496.50  608.5 1132.0  786.0  757.0  385.0 1214  550.5  709.0
-## Mean     424.20  995.3 1289.0  898.8  757.6  681.0 1357  879.9  899.2
-## 3rd Qu.  649.80 1749.0 1652.0 1142.0 1061.0  797.5 1844 1057.0 1189.0
-## Max.    1153.00 3213.0 7576.0 5109.0 2743.0 3648.0 8486 4519.0 7268.0
-##            NH     NJ     NM      NV     NY   OH   OK     OR     PA    RI
-## Min.      1.0    1.0    1.0    1.00    1.0    1    1    1.0    1.0  57.0
-## 1st Qu. 200.5  341.0  248.0   55.75  297.5  987  498  332.0  422.0 140.0
-## Median  315.0  783.0  365.0  125.00  593.5 1328  698  655.0  777.0 250.0
-## Mean    324.1  819.2  526.6  303.20  636.0 1380  847  995.4  881.5 254.2
-## 3rd Qu. 483.5 1234.0  566.0  291.50  917.0 1771 1025 1480.0 1246.0 349.0
-## Max.    566.0 2842.0 2144.0 2247.00 1897.0 3952 5339 3252.0 2938.0 475.0
-##             SD     TN      TX   UT     VA     VT     WA   WI    WV     WY
-## Min.       1.0    1.0     1.0    1    1.0    1.0    1.0    1   1.0    1.0
-## 1st Qu.  321.5  435.2   308.5  170  234.2  247.8  263.5  982 130.0  205.5
-## Median   572.0  966.0   661.0  304  435.5  430.0  699.0 1880 296.5  371.0
-## Mean     724.1 1150.0  1117.0  448  629.6  475.7 1062.0 2065 314.5  437.4
-## 3rd Qu.  938.8 1614.0  1392.0  729  782.5  707.8 1429.0 2935 438.5  618.5
-## Max.    4580.0 6105.0 16420.0 1713 2901.0 1105.0 5830.0 7122 863.0 1523.0</code></pre>
+<pre><code>            AK     AL     AR     AZ   CA     CO    CT   DE     FL     GA
+Min.      1.00    1.0    1.0    1.0    1    1.0   1.0  990    1.0    1.0
+1st Qu.   3.75  471.0  293.0    1.0  185  124.5 282.0 1092  266.0  200.5
+Median   13.50  829.0  574.0  143.5  716  296.5 578.0 1195  562.0  366.5
+Mean     92.50  958.6  630.8  948.0 1028  683.8 515.9 2085  772.1  457.7
+3rd Qu.  46.75 1246.0  803.0  794.8 1474  897.8 675.0 2632 1102.0  572.0
+Max.    930.00 2848.0 3187.0 9382.0 6876 3606.0 887.0 4069 3436.0 2811.0
+            HI   IA     ID   IL   IN     KS     KY     LA     MA     MD
+Min.       1.0    1    1.0    1    1    1.0    1.0    1.0    1.0    1.0
+1st Qu.  400.0  864  167.0  700  749  401.8  611.8  260.2   19.5  554.5
+Median   700.0 1195  400.0 1076 1103  641.5  921.0  445.5  440.0  750.0
+Mean     695.8 1333  536.3 1290 1096  946.5 1098.0  786.5  459.0  924.7
+3rd Qu.  980.0 1586  779.5 1686 1404 1135.0 1372.0 1181.0  661.0 1122.0
+Max.    1398.0 5986 2132.0 8248 3133 8574.0 4443.0 3767.0 1270.0 2425.0
+             ME     MI     MN     MO     MS     MT   NC     ND     NE
+Min.       1.00    1.0    1.0    1.0    1.0    1.0    1    1.0    1.0
+1st Qu.   43.25  248.2  756.5  479.8  441.0  200.5  437  333.2  372.5
+Median   496.50  608.5 1132.0  786.0  757.0  385.0 1214  550.5  709.0
+Mean     424.20  995.3 1289.0  898.8  757.6  681.0 1357  879.9  899.2
+3rd Qu.  649.80 1749.0 1652.0 1142.0 1061.0  797.5 1844 1057.0 1189.0
+Max.    1153.00 3213.0 7576.0 5109.0 2743.0 3648.0 8486 4519.0 7268.0
+           NH     NJ     NM      NV     NY   OH   OK     OR     PA    RI
+Min.      1.0    1.0    1.0    1.00    1.0    1    1    1.0    1.0  57.0
+1st Qu. 200.5  341.0  248.0   55.75  297.5  987  498  332.0  422.0 140.0
+Median  315.0  783.0  365.0  125.00  593.5 1328  698  655.0  777.0 250.0
+Mean    324.1  819.2  526.6  303.20  636.0 1380  847  995.4  881.5 254.2
+3rd Qu. 483.5 1234.0  566.0  291.50  917.0 1771 1025 1480.0 1246.0 349.0
+Max.    566.0 2842.0 2144.0 2247.00 1897.0 3952 5339 3252.0 2938.0 475.0
+            SD     TN      TX   UT     VA     VT     WA   WI    WV     WY
+Min.       1.0    1.0     1.0    1    1.0    1.0    1.0    1   1.0    1.0
+1st Qu.  321.5  435.2   308.5  170  234.2  247.8  263.5  982 130.0  205.5
+Median   572.0  966.0   661.0  304  435.5  430.0  699.0 1880 296.5  371.0
+Mean     724.1 1150.0  1117.0  448  629.6  475.7 1062.0 2065 314.5  437.4
+3rd Qu.  938.8 1614.0  1392.0  729  782.5  707.8 1429.0 2935 438.5  618.5
+Max.    4580.0 6105.0 16420.0 1713 2901.0 1105.0 5830.0 7122 863.0 1523.0</code></pre>
 <div class="references">
 <h1 id="references" class="unnumbered">References</h1>
 <div id="ref-baird2015designing">

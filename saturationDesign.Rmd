@@ -4,7 +4,56 @@ author: Jake Bowers
 date: '`r format(Sys.Date(), "%B %d, %Y")`'
 bibliography: bibliography.bib
 published: true
+graphics: yes
+fontsize: 10pt
+geometry: margin=1in
+mainfont: "Minion Pro"
+output:
+  html_document:
+    graphics: yes
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+  pdf_document:
+    latex_engine: xelatex
+    graphics: yes
+    fig_caption: yes
+    fig_height: 4
+    fig_width: 4
+  word_document:
+    fig_height: 3
+    fig_width: 5
+
 ---
+
+
+```{r include=FALSE, cache=FALSE}
+# Some customization.  You can alter or delete as desired (if you know what you are doing).
+# knitr settings to control how R chunks work.
+
+## To make the html file do
+## render("exploration4.Rmd",output_format=html_document(fig_retina=FALSE))
+## To make the pdf file do
+## render("exploration4.Rmd",output_format=pdf_document())
+
+require(knitr)
+opts_chunk$set(
+  tidy=FALSE,     # display code as typed
+  size="small",    # slightly smaller font for code
+  echo=TRUE,
+  results='markup',
+  strip.white=TRUE,
+  fig.path='figs/fig',
+  cache=FALSE,
+  highlight=TRUE,
+  width.cutoff=132,
+  size='footnotesize',
+  out.width='.9\\textwidth',
+  message=FALSE,
+  comment=NA)
+```
+
+
 
 A randomized saturation design is like the simple two-level design that we describe in [twolevelrand.Rmd](twolevelrand.Rmd) but involves random assignment of proportion treated to counties, or random assignment of "saturation" of the treatment.^[We follow @baird2015designing, who in turn build on @sinclair2012detecting, among others.]  For example, we might randomly assign counties to receive between 0% treated (i.e. the "pure control" counties in the two-level design) and 100% treated, with some saturations in between (like 33%, 50%, 66%, etc.).
 
