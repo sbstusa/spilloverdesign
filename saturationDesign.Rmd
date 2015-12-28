@@ -103,4 +103,30 @@ summary(with(countyCounts,tapply(n,county,sum))) ## number of farmers by county
 sapply(split(countyCounts$n,countyCounts$state),function(x){ summary(x) }) ## dist of county sizes by state
 ```
 
+
+# Centroids
+
+<https://www.nceas.ucsb.edu/scicomp/casestudies> 
+
+Centers of population <http://www2.census.gov/geo/docs/reference/cenpop2010/county/CenPop2010_Mean_CO.txt>
+<https://www.census.gov/geo/reference/centersofpop.html>
+
+
+County Adjacency:
+<https://www.census.gov/geo/reference/county-adjacency.html>
+
+
+```{r}
+
+usaCounties<-read.dbf("gis/AddCombiFips/USACountyCentroids.dbf")
+
+
+```
+
+```{r}
+library(nbpMatching)
+
+
+```
+
 # References
