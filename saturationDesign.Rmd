@@ -104,19 +104,52 @@ sapply(split(countyCounts$n,countyCounts$state),function(x){ summary(x) }) ## di
 ```
 
 
-# Centroids
+#  County to County Distances
 
-<https://www.nceas.ucsb.edu/scicomp/casestudies> 
-
+We can have three measures of distance between counties: euclidean distance
+between geographic centers, euclidean distance between centers of population,
+and an indicator (1 or 0) for whether two counties are adjacent to each other.^[
+Some of the sources:
 Centers of population <http://www2.census.gov/geo/docs/reference/cenpop2010/county/CenPop2010_Mean_CO.txt>
 <https://www.census.gov/geo/reference/centersofpop.html>
-
-
 County Adjacency:
 <https://www.census.gov/geo/reference/county-adjacency.html>
+]
+
+## County Adjacency
+
+This file required a bit of reformatting work.
+
+```
+##These are bash commands
+curl -O http://www2.census.gov/geo/docs/reference/county_adjacency.txt
+## Add "Watonwan County, MN" to line 9625
+## This next doesn't work. doing it by hand
+##sed -i.bak '9629s/.*/\"Watonwan County\, MN\"\t27165\t\"Blue Earth County\, MN\"\t27013' county_adjacency.txt
+cp county_adjacency.txt tmp1.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/"\t/";\t/g' tmp1.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/\t\t"/\t\t;;"/g' tmp1.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/\t"/\t;"/g' tmp1.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/\t//g' tmp1.txt
+LC_CTYPE=C LANG=C tr  '\n' ':'  < tmp1.txt > tmp2.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/:;;/;/g'  tmp2.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/:/\\\n/g'  tmp2.txt
+cp tmp2.txt countyAdjClean.txt
+## change encoding of some non-English characters like Doña Ana County, NM, doing it by hand in vim:
+### s/Do?a/Dona/gc
+```
 
 
 ```{r}
+
+
+cntyAdjList1<-scan("gis/countyAdjClean.txt",what="",sep="\n",quote='\"')
+cntyAdjList2<-strsplit(cntyAdjList1,";")
+centerCounties<-sapply(cntyAdjList2,function(obj){obj[1]})
+names(cntyAdjList2)<-centerCounties
+adjacentCounties<-lapply(cntyAdjList2,function(x){ x[5:length(x)] })
+
+usaCountiesPopCenters<-read.csv(url("http://www2.census.gov/geo/docs/reference/cenpop2010/county/CenPop2010_Mean_CO.txt"))
 
 usaCounties<-read.dbf("gis/AddCombiFips/USACountyCentroids.dbf")
 
