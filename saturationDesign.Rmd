@@ -282,6 +282,9 @@ scalarDist<-function(var,scalefactor=1){
   })
 }
 
+
+datByState<-split(wrkdat,wrkdat$state)
+
 ## Distance between counties in terms of number of farmers
 numfarmers<-wrkdat$n
 names(numfarmers)<-row.names(wrkdat)
@@ -308,10 +311,15 @@ thedistDM<-distancematrix(thedist)
 ## This is inelegant but intelligible and not slow
 pairsByState<-lapply(split(wrkdat,wrkdat$state), function(dat){
 		       ## message(unique(dat$state))
+		       dat<-datByState[[2]]
 		       numfarmers<-dat$n
 		       names(numfarmers)<-row.names(dat)
-		       sizeDist<-distancematrix(scalarDist(numfarmers))
-		       nbpm<-nonbimatch(sizeDist)
+		       sizeDist<-scalarDist(numfarmers)
+		       popCentroidDist<-as.matrix(dist(dat[,c("LATITUDE","LONGITUDE")]))
+		       tmp<- 1 - popCentroidDist/max(as.vector(popCentroidDist))
+		       diag(tmp)<-0
+		       pendist<- sizeDist + tmp*sizeDist
+		       nbpm<-nonbimatch(distancematrix(pendist))
 		       thepairs<-get.sets(nbpm$matches,remove.unpaired=TRUE)
 		       levels(thepairs)<-paste(unique(dat$state),levels(thepairs),sep=":")
 		       thepairsA<-as.character(thepairs)
