@@ -149,11 +149,18 @@ Sys.setlocale('LC_ALL','C')
 cntyAdjList1<-scan("gis/countyAdjClean.txt",what="",sep="\n",quote='\"')
 cntyAdjList2<-strsplit(cntyAdjList1,";")
 centerCounties<-sapply(cntyAdjList2,function(obj){obj[1]})
+centerCounties[centerCounties=="Prince of Wales-Hyder Census Area"]<-"Prince Wales Hyder"
+
 names(cntyAdjList2)<-centerCounties
+
+## Remove Puerto Rico
+centerCounties<-centerCounties[grep(", PR$",centerCounties,invert=TRUE)]
 adjacentCounties<-lapply(cntyAdjList2,function(x){ x[5:length(x)] })
 ```
 
-Centroids based on geography and based on population density.
+
+
+## Centroids based on geography and based on population density.
 
 ```{r}
 states<-read.csv("gis/StateNamesAndAbbreviations.csv",as.is=TRUE)
@@ -269,6 +276,10 @@ wrkdat<-do.call("rbind",datList)
 
 ```
 
+## Find Pairs
+
+The input to the pairing function is a matrix of distances. So first we make distance matrices.
+
 ```{r}
 library(nbpMatching)
 
@@ -281,31 +292,12 @@ scalarDist<-function(var,scalefactor=1){
   })
 }
 
+## Matrix recording whether two counties are adjacent.
+
+
+
 
 datByState<-split(wrkdat,wrkdat$state)
-
-## Distance between counties in terms of number of farmers
-numfarmers<-wrkdat$n
-names(numfarmers)<-row.names(wrkdat)
-sizeDist<-scalarDist(numfarmers)
-
-## Distance between centroids of population
-popCentroidDist<-as.matrix(dist(wrkdat[,c("LATITUDE","LONGITUDE")]))
-
-## Setup the penalty
-sizeDist[1:5,1:5]
-popCentroidDist[1:5,1:5]
-
-maxDists<-apply(popCentroidDist,1,max)
-
-tmp<-popCentroidDist
-diag(tmp)<-0
-
-sizeDist[1:5,1:5]+tmp[1:5,1:5]
-
-thedist<-1000*sizeDist+tmp
-
-thedistDM<-distancematrix(thedist)
 
 ## This is inelegant but intelligible and not slow
 pairsByState<-lapply(split(wrkdat,wrkdat$state), function(dat){
@@ -356,10 +348,11 @@ quantile(pairDiffsN,seq(0,1,.1))
 source(url("http://www.jakebowers.org/Matching/nonbimatchingfunctions.R"))
 
 ```
+## Choose best pair among the matches within each state
 
-```{r}
+## Assign one county to possible treatment
 
+## Calculate the number of treatment assignments 
 
-```
 
 # References
