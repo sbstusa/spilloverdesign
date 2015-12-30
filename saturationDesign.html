@@ -10,7 +10,7 @@
 
 <meta name="author" content="Jake Bowers" />
 
-<meta name="date" content="2015-12-28" />
+<meta name="date" content="2015-12-30" />
 
 <title>Notes on a Randomized Saturation Design</title>
 
@@ -64,7 +64,7 @@ img {
 <div id="header">
 <h1 class="title">Notes on a Randomized Saturation Design</h1>
 <h4 class="author"><em>Jake Bowers</em></h4>
-<h4 class="date"><em>December 28, 2015</em></h4>
+<h4 class="date"><em>December 30, 2015</em></h4>
 </div>
 
 
@@ -109,6 +109,7 @@ str(countyCounts)</code></pre>
  $ state : chr  &quot;AK&quot; &quot;AK&quot; &quot;AK&quot; &quot;AK&quot; ...
  $ county: chr  &quot;Aleutians East&quot; &quot;Aleutians West&quot; &quot;Anchorage&quot; &quot;Benton&quot; ...
  $ n     : int  8 7 930 2 17 6 25 21 422 1 ...</code></pre>
+<pre class="r"><code>countyCounts&lt;-as.data.frame(countyCounts,stringsAsFactors=FALSE)</code></pre>
 <pre class="r"><code>sapply(countyCounts,function(x){ sum(is.na(x) | x==&quot;&quot; ) })</code></pre>
 <pre><code>     X  state county      n 
      0      0      0      0 </code></pre>
@@ -169,6 +170,329 @@ Median   572.0  966.0   661.0  304  435.5  430.0  699.0 1880 296.5  371.0
 Mean     724.1 1150.0  1117.0  448  629.6  475.7 1062.0 2065 314.5  437.4
 3rd Qu.  938.8 1614.0  1392.0  729  782.5  707.8 1429.0 2935 438.5  618.5
 Max.    4580.0 6105.0 16420.0 1713 2901.0 1105.0 5830.0 7122 863.0 1523.0</code></pre>
+</div>
+<div id="county-to-county-distances" class="section level1">
+<h1>County to County Distances</h1>
+<p>We can have three measures of distance between counties: euclidean distance between geographic centers, euclidean distance between centers of population, and an indicator (1 or 0) for whether two counties are adjacent to each other.<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a></p>
+<div id="county-adjacency" class="section level2">
+<h2>County Adjacency</h2>
+<p>This file required a bit of reformatting work.</p>
+<pre><code>##These are bash commands
+curl -O http://www2.census.gov/geo/docs/reference/county_adjacency.txt
+## Add &quot;Watonwan County, MN&quot; to line 9625
+## This next doesn't work. doing it by hand
+##sed -i.bak '9629s/.*/\&quot;Watonwan County\, MN\&quot;\t27165\t\&quot;Blue Earth County\, MN\&quot;\t27013' county_adjacency.txt
+cp county_adjacency.txt tmp1.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/&quot;\t/&quot;;\t/g' tmp1.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/\t\t&quot;/\t\t;;&quot;/g' tmp1.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/\t&quot;/\t;&quot;/g' tmp1.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/\t//g' tmp1.txt
+LC_CTYPE=C LANG=C tr  '\n' ':'  &lt; tmp1.txt &gt; tmp2.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/:;;/;/g'  tmp2.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/:/\\\n/g'  tmp2.txt
+cp tmp2.txt countyAdjClean.txt
+NA
+### s/Do?a/Dona/gc</code></pre>
+<pre class="r"><code>## https://stackoverflow.com/questions/5411979/state-name-to-abbreviation-in-r
+
+Sys.setlocale('LC_ALL','C') </code></pre>
+<pre><code>[1] &quot;C/C/C/C/C/en_US.UTF-8&quot;</code></pre>
+<pre class="r"><code>cntyAdjList1&lt;-scan(&quot;gis/countyAdjClean.txt&quot;,what=&quot;&quot;,sep=&quot;\n&quot;,quote='\&quot;')
+cntyAdjList2&lt;-strsplit(cntyAdjList1,&quot;;&quot;)
+centerCounties&lt;-sapply(cntyAdjList2,function(obj){obj[1]})
+names(cntyAdjList2)&lt;-centerCounties
+adjacentCounties&lt;-lapply(cntyAdjList2,function(x){ x[5:length(x)] })</code></pre>
+<p>Centroids based on geography and based on population density.</p>
+<pre class="r"><code>states&lt;-read.csv(&quot;gis/StateNamesAndAbbreviations.csv&quot;,as.is=TRUE)
+
+usaCountiesPopCentroids&lt;-read.csv(url(&quot;http://www2.census.gov/geo/docs/reference/cenpop2010/county/CenPop2010_Mean_CO.txt&quot;),as.is=TRUE)
+usaCountiesPopCentroids$state&lt;-states$Postal.Code[match(usaCountiesPopCentroids$STNAME,states$State)]
+usaCountiesPopCentroids$STATEFIPS&lt;-with(usaCountiesPopCentroids,ifelse(STATEFP&lt;10,paste(&quot;0&quot;,STATEFP,sep=&quot;&quot;),as.character(STATEFP)))
+usaCountiesPopCentroids$COUNTYNAME&lt;-usaCountiesPopCentroids$COUNAME
+
+str(usaCountiesPopCentroids)</code></pre>
+<pre><code>'data.frame':   3221 obs. of  10 variables:
+ $ STATEFP   : int  1 1 1 1 1 1 1 1 1 1 ...
+ $ COUNTYFP  : int  1 3 5 7 9 11 13 15 17 19 ...
+ $ COUNAME   : chr  &quot;Autauga&quot; &quot;Baldwin&quot; &quot;Barbour&quot; &quot;Bibb&quot; ...
+ $ STNAME    : chr  &quot;Alabama&quot; &quot;Alabama&quot; &quot;Alabama&quot; &quot;Alabama&quot; ...
+ $ POPULATION: int  54571 182265 27457 22915 57322 10914 20947 118572 34215 25989 ...
+ $ LATITUDE  : num  32.5 30.5 31.8 33 34 ...
+ $ LONGITUDE : num  -86.5 -87.8 -85.3 -87.1 -86.6 ...
+ $ state     : chr  &quot;AL&quot; &quot;AL&quot; &quot;AL&quot; &quot;AL&quot; ...
+ $ STATEFIPS : chr  &quot;01&quot; &quot;01&quot; &quot;01&quot; &quot;01&quot; ...
+ $ COUNTYNAME: chr  &quot;Autauga&quot; &quot;Baldwin&quot; &quot;Barbour&quot; &quot;Bibb&quot; ...</code></pre>
+<pre class="r"><code>usaCountiesPopCentroids$COUNTYFIPS&lt;-with(usaCountiesPopCentroids,ifelse(COUNTYFP&lt;10,
+                                    paste(&quot;00&quot;,COUNTYFP,sep=&quot;&quot;),
+                                    ifelse(COUNTYFP&lt;100,paste(&quot;0&quot;,COUNTYFP,sep=&quot;&quot;),
+                                           as.character(COUNTYFP))))
+
+
+usaCountiesGeoCentroids&lt;-read.dbf(&quot;gis/AddCombiFips/USACountyCentroids.dbf&quot;,as.is=TRUE)
+
+tmp&lt;-t(sapply(split(usaCountiesGeoCentroids,usaCountiesGeoCentroids$COMBIFIPS),function(dat){
+                     sapply(dat,function(x){
+                          if(is.character(x)){ 
+                        return(unique(x))
+                          } else {
+                        return(mean(x))
+                          }})}))
+
+usaCountiesGeoCentroidsAvg&lt;-as.data.frame(tmp,stringsAsFactors=FALSE)
+usaCountiesGeoCentroidsAvg$CENTRDLON&lt;-as.numeric(usaCountiesGeoCentroidsAvg$CENTRDLON)
+usaCountiesGeoCentroidsAvg$CENTRDLAT&lt;-as.numeric(usaCountiesGeoCentroidsAvg$CENTRDLAT)
+str(usaCountiesGeoCentroidsAvg)</code></pre>
+<pre><code>'data.frame':   3219 obs. of  6 variables:
+ $ COUNTYNAME: chr  &quot;Autauga&quot; &quot;Baldwin&quot; &quot;Barbour&quot; &quot;Bibb&quot; ...
+ $ STATEFIPS : chr  &quot;01&quot; &quot;01&quot; &quot;01&quot; &quot;01&quot; ...
+ $ COUNTYFIPS: chr  &quot;001&quot; &quot;003&quot; &quot;005&quot; &quot;007&quot; ...
+ $ COMBIFIPS : chr  &quot;01001&quot; &quot;01003&quot; &quot;01005&quot; &quot;01007&quot; ...
+ $ CENTRDLON : num  -86.6 -87.7 -85.4 -87.1 -86.6 ...
+ $ CENTRDLAT : num  32.5 30.7 31.9 33 34 ...</code></pre>
+<pre class="r"><code>## Dumping repeated counties --- basically, multi-island counties with multiple geographic centroids
+censusCounties&lt;-merge(usaCountiesPopCentroids,usaCountiesGeoCentroidsAvg,all.x=TRUE,all.y=FALSE,by=c(&quot;COUNTYFIPS&quot;,&quot;STATEFIPS&quot;))
+
+## Clifton Forge, VA is a town not a county as of 2010, but only in usaCountiesGeo so not in this file
+## censusCounties&lt;-censusCounties[censusCounties$COUNTYNAME.x!=&quot;Clifton Forge&quot;,]
+
+summary(censusCounties)</code></pre>
+<pre><code>  COUNTYFIPS         STATEFIPS            STATEFP        COUNTYFP    
+ Length:3221        Length:3221        Min.   : 1.0   Min.   :  1.0  
+ Class :character   Class :character   1st Qu.:19.0   1st Qu.: 35.0  
+ Mode  :character   Mode  :character   Median :30.0   Median : 79.0  
+                                       Mean   :31.3   Mean   :103.1  
+                                       3rd Qu.:46.0   3rd Qu.:133.0  
+                                       Max.   :72.0   Max.   :840.0  
+                                                                     
+   COUNAME             STNAME            POPULATION         LATITUDE    
+ Length:3221        Length:3221        Min.   :     82   Min.   :17.98  
+ Class :character   Class :character   1st Qu.:  11310   1st Qu.:34.34  
+ Mode  :character   Mode  :character   Median :  26076   Median :38.23  
+                                       Mean   :  97011   Mean   :37.96  
+                                       3rd Qu.:  65880   3rd Qu.:41.69  
+                                       Max.   :9818605   Max.   :70.52  
+                                                                        
+   LONGITUDE          state           COUNTYNAME.x      
+ Min.   :-168.29   Length:3221        Length:3221       
+ 1st Qu.: -98.06   Class :character   Class :character  
+ Median : -89.96   Mode  :character   Mode  :character  
+ Mean   : -91.66                                        
+ 3rd Qu.: -82.99                                        
+ Max.   : -65.30                                        
+                                                        
+ COUNTYNAME.y        COMBIFIPS           CENTRDLON         CENTRDLAT    
+ Length:3221        Length:3221        Min.   :-169.50   Min.   :17.98  
+ Class :character   Class :character   1st Qu.: -98.05   1st Qu.:34.34  
+ Mode  :character   Mode  :character   Median : -89.93   Median :38.20  
+                                       Mean   : -91.56   Mean   :37.93  
+                                       3rd Qu.: -82.95   3rd Qu.:41.69  
+                                       Max.   : -43.46   Max.   :69.31  
+                                       NA's   :6         NA's   :6      </code></pre>
+<pre class="r"><code>## There are a few places with population centroids but no geographic centroids. This is ok. I think that we'd prefer population centroids anyway.
+blah&lt;-censusCounties[is.na(censusCounties$CENTRDLAT),&quot;COUNTYNAME.x&quot;]
+countyCounts$county[countyCounts$county %in% blah]</code></pre>
+<pre><code>[1] &quot;Hoonah-Angoon&quot; &quot;Petersburg&quot;    &quot;Skagway&quot;       &quot;Wrangell&quot;     
+[5] &quot;Broomfield&quot;   </code></pre>
+<pre class="r"><code>grep(&quot;Prince&quot;,countyCounts$county,value=TRUE)</code></pre>
+<pre><code>[1] &quot;Prince Wales Hyder&quot; &quot;Prince Georges&quot;     &quot;Prince Edward&quot;     
+[4] &quot;Prince George&quot;      &quot;Prince Georges&quot;     &quot;Prince William&quot;    </code></pre>
+<pre class="r"><code>censusCounties$COUNTYNAME.x[censusCounties$COUNTYNAME.x==&quot;Prince of Wales-Hyder&quot;]&lt;-&quot;Prince Wales Hyder&quot;
+
+## Remove Puerto Rico
+censusCounties&lt;-censusCounties[!(censusCounties$STNAME==&quot;Puerto Rico&quot; | censusCounties$state==&quot;PR&quot; | censusCounties$STATEFIPS==&quot;72&quot;),]
+stopifnot(all(is.na(unlist(censusCounties[is.na(censusCounties$state),]))))
+censusCounties&lt;-censusCounties[!is.na(censusCounties$state),]
+
+## Merge onto existing data.
+
+censusCounties$county&lt;-censusCounties$COUNTYNAME.x
+usaCountiesPopCentroids$COUNTYNAME[usaCountiesPopCentroids$COUNTYNAME==&quot;Prince of Wales-Hyder&quot;]&lt;-&quot;Prince Wales Hyder&quot;
+usaCountiesPopCentroids$county&lt;-usaCountiesPopCentroids$COUNTYNAME
+
+tmpdat&lt;-merge(countyCounts,censusCounties,by=c(&quot;county&quot;,&quot;state&quot;),all.x=TRUE,all.y=FALSE)
+##tmpdat&lt;-merge(countyCounts,usaCountiesPopCentroids,by=c(&quot;county&quot;,&quot;state&quot;),all.x=TRUE,all.y=FALSE)
+tmpdat$ids&lt;-paste(tmpdat$county,tmpdat$state,sep=&quot;, &quot;)
+with(tmpdat,table(ids)[table(ids)!=1])</code></pre>
+<pre><code>ids
+Baltimore, MD   Bedford, VA   Fairfax, VA  Franklin, VA  Richmond, VA 
+            2             2             2             2             2 
+  Roanoke, VA 
+            2 </code></pre>
+<pre class="r"><code>blah&lt;-names(with(tmpdat,table(ids)[table(ids)!=1]))
+blahdat&lt;-tmpdat[tmpdat$id %in% blah,]
+blahdat&lt;-blahdat[order(blahdat$county,blahdat$POPULATION,decreasing=TRUE),]
+
+
+## We have duplicated records because, I think, some citys and counties are both cities and counties.
+## https://en.wikipedia.org/wiki/List_of_counties_in_Virginia
+
+## Which one to use? Which are referred to in the USDA data?
+
+## The county FIPS codes are (from the TR-65 FIPS Code Chart)
+
+bad&lt;-with(tmpdat,{(county==&quot;Richmond&quot;   &amp; state==&quot;VA&quot; &amp;   COUNTYFIPS!=&quot;159&quot;)  |
+              (county==&quot;Bedford&quot;   &amp; state==&quot;VA&quot; &amp;   COUNTYFIPS!=&quot;019&quot;) |
+              (county==&quot;Fairfax&quot;   &amp; state==&quot;VA&quot; &amp;   COUNTYFIPS!=&quot;059&quot;) |
+              (county==&quot;Roanoke&quot;   &amp; state==&quot;VA&quot; &amp;   COUNTYFIPS!=&quot;161&quot;)|
+              (county==&quot;Franklin&quot;  &amp; state==&quot;VA&quot; &amp;  COUNTYFIPS!=&quot;067&quot;) |
+              (county==&quot;Baltimore&quot; &amp; state==&quot;MD&quot; &amp; COUNTYFIPS!=&quot;005&quot;)})
+
+tmpdat&lt;-tmpdat[!bad,]
+stopifnot(all(table(tmpdat$ids)==1))
+row.names(tmpdat)&lt;-tmpdat$ids</code></pre>
+</div>
+</div>
+<div id="find-pairs" class="section level1">
+<h1>Find pairs</h1>
+<p>Remove counties with only 1 farmer</p>
+<pre class="r"><code>tmpdat&lt;-tmpdat[tmpdat$n&gt;1,]</code></pre>
+<p>Remove counties with no geographic information:</p>
+<pre class="r"><code>tmpdat&lt;-tmpdat[!is.na(tmpdat$LATITUDE),]</code></pre>
+<p>Also trim the top and bottom 1 percent of counties (in terms of size)</p>
+<pre class="r"><code>stateCountyFarmDist&lt;-tapply(tmpdat$n,tmpdat$state,function(x){ quantile(x,c(0,.01,.1,.25,.5,.75,.9,.99,1)) })
+
+datList&lt;-lapply(split(tmpdat,tmpdat$state),function(dat){
+          qs&lt;-quantile(dat$n,c(.01,.99))
+          return(dat[dat$n &gt;= qs[[1]] &amp; dat$n &lt;= qs[[2]],])
+          })
+
+sapply(datList,nrow)</code></pre>
+<pre><code> AK  AL  AR  AZ  CA  CO  CT  DE  FL  GA  HI  IA  ID  IL  IN  KS  KY  LA 
+ 24  64  72  13  56  62   6   1  63 155   2  96  42  96  87 101 116  53 
+ MA  MD  ME  MI  MN  MO  MS  MT  NC  ND  NE  NH  NJ  NM  NV  NY  OH  OK 
+ 12  18  14  79  83 105  80  54  98  50  91   8  19  30  15  59  86  75 
+ OR  PA  RI  SD  TN  TX  UT  VA  VT  WA  WI  WV  WY 
+ 34  65   3  64  94 247  27  93  12  37  69  53  21 </code></pre>
+<pre class="r"><code>sum(sapply(datList,nrow))</code></pre>
+<pre><code>[1] 2904</code></pre>
+<pre class="r"><code>wrkdat&lt;-do.call(&quot;rbind&quot;,datList)</code></pre>
+<pre class="r"><code>library(nbpMatching)
+
+scalarDist&lt;-function(var,scalefactor=1){
+  ## Utility function to make n x n abs dist matrices
+  ## Scalefactor helps us turn fractions into integers since nbpMatching needs
+  ## integers
+  outer(var,var,FUN=function(x,y){
+    as.integer(abs(x-y)*scalefactor)
+  })
+}
+
+
+datByState&lt;-split(wrkdat,wrkdat$state)
+
+## Distance between counties in terms of number of farmers
+numfarmers&lt;-wrkdat$n
+names(numfarmers)&lt;-row.names(wrkdat)
+sizeDist&lt;-scalarDist(numfarmers)
+
+## Distance between centroids of population
+popCentroidDist&lt;-as.matrix(dist(wrkdat[,c(&quot;LATITUDE&quot;,&quot;LONGITUDE&quot;)]))
+
+## Setup the penalty
+sizeDist[1:5,1:5]</code></pre>
+<pre><code>                      AK.Aleutians East, AK AK.Aleutians West, AK
+AK.Aleutians East, AK                     0                     1
+AK.Aleutians West, AK                     1                     0
+AK.Bethel, AK                             9                    10
+AK.Bristol Bay, AK                        2                     1
+AK.Denali, AK                            17                    18
+                      AK.Bethel, AK AK.Bristol Bay, AK AK.Denali, AK
+AK.Aleutians East, AK             9                  2            17
+AK.Aleutians West, AK            10                  1            18
+AK.Bethel, AK                     0                 11             8
+AK.Bristol Bay, AK               11                  0            19
+AK.Denali, AK                     8                 19             0</code></pre>
+<pre class="r"><code>popCentroidDist[1:5,1:5]</code></pre>
+<pre><code>                      AK.Aleutians East, AK AK.Aleutians West, AK
+AK.Aleutians East, AK              0.000000              5.455869
+AK.Aleutians West, AK              5.455869              0.000000
+AK.Bethel, AK                      5.867957              9.056868
+AK.Bristol Bay, AK                 7.199477             12.389790
+AK.Denali, AK                     16.545293             21.636784
+                      AK.Bethel, AK AK.Bristol Bay, AK AK.Denali, AK
+AK.Aleutians East, AK      5.867957           7.199477     16.545293
+AK.Aleutians West, AK      9.056868          12.389790     21.636784
+AK.Bethel, AK              0.000000           5.661607     13.503656
+AK.Bristol Bay, AK         5.661607           0.000000      9.346265
+AK.Denali, AK             13.503656           9.346265      0.000000</code></pre>
+<pre class="r"><code>maxDists&lt;-apply(popCentroidDist,1,max)
+
+tmp&lt;-popCentroidDist
+diag(tmp)&lt;-0
+
+sizeDist[1:5,1:5]+tmp[1:5,1:5]</code></pre>
+<pre><code>                      AK.Aleutians East, AK AK.Aleutians West, AK
+AK.Aleutians East, AK              0.000000              6.455869
+AK.Aleutians West, AK              6.455869              0.000000
+AK.Bethel, AK                     14.867957             19.056868
+AK.Bristol Bay, AK                 9.199477             13.389790
+AK.Denali, AK                     33.545293             39.636784
+                      AK.Bethel, AK AK.Bristol Bay, AK AK.Denali, AK
+AK.Aleutians East, AK      14.86796           9.199477      33.54529
+AK.Aleutians West, AK      19.05687          13.389790      39.63678
+AK.Bethel, AK               0.00000          16.661607      21.50366
+AK.Bristol Bay, AK         16.66161           0.000000      28.34626
+AK.Denali, AK              21.50366          28.346265       0.00000</code></pre>
+<pre class="r"><code>thedist&lt;-1000*sizeDist+tmp
+
+thedistDM&lt;-distancematrix(thedist)
+
+## This is inelegant but intelligible and not slow
+pairsByState&lt;-lapply(split(wrkdat,wrkdat$state), function(dat){
+               ## message(unique(dat$state))
+               dat&lt;-datByState[[2]]
+               numfarmers&lt;-dat$n
+               names(numfarmers)&lt;-row.names(dat)
+               sizeDist&lt;-scalarDist(numfarmers)
+               popCentroidDist&lt;-as.matrix(dist(dat[,c(&quot;LATITUDE&quot;,&quot;LONGITUDE&quot;)]))
+               tmp&lt;- 1 - popCentroidDist/max(as.vector(popCentroidDist))
+               diag(tmp)&lt;-0
+               pendist&lt;- sizeDist + tmp*sizeDist
+               nbpm&lt;-nonbimatch(distancematrix(pendist))
+               thepairs&lt;-get.sets(nbpm$matches,remove.unpaired=TRUE)
+               levels(thepairs)&lt;-paste(unique(dat$state),levels(thepairs),sep=&quot;:&quot;)
+               thepairsA&lt;-as.character(thepairs)
+               names(thepairsA)&lt;-names(thepairs)
+               return(thepairsA)
+  })
+
+## Because some states have an odd number of counties, one is excluded.
+sum(sapply(pairsByState,length))</code></pre>
+<pre><code>[1] 3136</code></pre>
+<pre class="r"><code>sapply(pairsByState,length)</code></pre>
+<pre><code>AK AL AR AZ CA CO CT DE FL GA HI IA ID IL IN KS KY LA MA MD ME MI MN MO MS 
+64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 
+MT NC ND NE NH NJ NM NV NY OH OK OR PA RI SD TN TX UT VA VT WA WI WV WY 
+64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 64 </code></pre>
+<pre class="r"><code>## Compare to:
+table(wrkdat$state)</code></pre>
+<pre><code>
+ AK  AL  AR  AZ  CA  CO  CT  DE  FL  GA  HI  IA  ID  IL  IN  KS  KY  LA 
+ 24  64  72  13  56  62   6   1  63 155   2  96  42  96  87 101 116  53 
+ MA  MD  ME  MI  MN  MO  MS  MT  NC  ND  NE  NH  NJ  NM  NV  NY  OH  OK 
+ 12  18  14  79  83 105  80  54  98  50  91   8  19  30  15  59  86  75 
+ OR  PA  RI  SD  TN  TX  UT  VA  VT  WA  WI  WV  WY 
+ 34  65   3  64  94 247  27  93  12  37  69  53  21 </code></pre>
+<pre class="r"><code>sum(table(wrkdat$state))</code></pre>
+<pre><code>[1] 2904</code></pre>
+<pre class="r"><code>nrow(wrkdat)</code></pre>
+<pre><code>[1] 2904</code></pre>
+<pre class="r"><code>for(i in 1:length(pairsByState)){
+  message(i)
+  wrkdat[names(pairsByState[[i]]),&quot;pm1&quot;]&lt;-pairsByState[[i]]
+}
+
+stopifnot(all(table(wrkdat$pm1)==2))</code></pre>
+<p>How well did the matching do? Here are descriptives of the pairs.</p>
+<pre class="r"><code>pairDiffsN&lt;-with(wrkdat[!is.na(wrkdat$pm1),],tapply(n,pm1,function(x){ abs(diff(x)) }) )
+summary(pairDiffsN)</code></pre>
+<pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   3.00    9.50   19.50   43.84   41.25  367.00 </code></pre>
+<pre class="r"><code>quantile(pairDiffsN,seq(0,1,.1))</code></pre>
+<pre><code>   0%   10%   20%   30%   40%   50%   60%   70%   80%   90%  100% 
+  3.0   4.2   7.2  12.3  16.0  19.5  25.4  37.9  55.4  93.7 367.0 </code></pre>
+<pre class="r"><code>## Maybe use a gist or something for this
+source(url(&quot;http://www.jakebowers.org/Matching/nonbimatchingfunctions.R&quot;))</code></pre>
 <div class="references">
 <h1 id="references" class="unnumbered">References</h1>
 <div id="ref-baird2015designing">
@@ -183,6 +507,7 @@ Max.    4580.0 6105.0 16420.0 1713 2901.0 1105.0 5830.0 7122 863.0 1523.0</code>
 <hr />
 <ol>
 <li id="fn1"><p>We follow <span class="citation">Baird et al. (<a href="#ref-baird2015designing">2015</a>)</span>, who in turn build on <span class="citation">Sinclair, McConnell, and Green (<a href="#ref-sinclair2012detecting">2012</a>)</span>, among others.<a href="#fnref1">↩</a></p></li>
+<li id="fn2"><p>Some of the sources: Centers of population <a href="http://www2.census.gov/geo/docs/reference/cenpop2010/county/CenPop2010_Mean_CO.txt" class="uri">http://www2.census.gov/geo/docs/reference/cenpop2010/county/CenPop2010_Mean_CO.txt</a> <a href="https://www.census.gov/geo/reference/centersofpop.html" class="uri">https://www.census.gov/geo/reference/centersofpop.html</a> County Adjacency: <a href="https://www.census.gov/geo/reference/county-adjacency.html" class="uri">https://www.census.gov/geo/reference/county-adjacency.html</a><a href="#fnref2">↩</a></p></li>
 </ol>
 </div>
 

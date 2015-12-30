@@ -163,7 +163,6 @@ usaCountiesPopCentroids$state<-states$Postal.Code[match(usaCountiesPopCentroids$
 usaCountiesPopCentroids$STATEFIPS<-with(usaCountiesPopCentroids,ifelse(STATEFP<10,paste("0",STATEFP,sep=""),as.character(STATEFP)))
 usaCountiesPopCentroids$COUNTYNAME<-usaCountiesPopCentroids$COUNAME
 
-str(usaCountiesGeoCentroids)
 str(usaCountiesPopCentroids)
 usaCountiesPopCentroids$COUNTYFIPS<-with(usaCountiesPopCentroids,ifelse(COUNTYFP<10,
 									paste("00",COUNTYFP,sep=""),
