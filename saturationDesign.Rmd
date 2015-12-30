@@ -93,6 +93,7 @@ library(googlesheets)
 countyCountsGS<-gs_title("county-counts.csv") ## get info about the data
 countyCounts<-gs_read_csv(countyCountsGS)
 str(countyCounts)
+countyCounts<-as.data.frame(countyCounts,stringsAsFactors=FALSE)
 ```
 
 ```{r}
@@ -141,23 +142,215 @@ cp tmp2.txt countyAdjClean.txt
 
 
 ```{r}
+## https://stackoverflow.com/questions/5411979/state-name-to-abbreviation-in-r
 
+Sys.setlocale('LC_ALL','C') 
 
 cntyAdjList1<-scan("gis/countyAdjClean.txt",what="",sep="\n",quote='\"')
 cntyAdjList2<-strsplit(cntyAdjList1,";")
 centerCounties<-sapply(cntyAdjList2,function(obj){obj[1]})
 names(cntyAdjList2)<-centerCounties
 adjacentCounties<-lapply(cntyAdjList2,function(x){ x[5:length(x)] })
+```
 
-usaCountiesPopCenters<-read.csv(url("http://www2.census.gov/geo/docs/reference/cenpop2010/county/CenPop2010_Mean_CO.txt"))
+Centroids based on geography and based on population density.
 
-usaCounties<-read.dbf("gis/AddCombiFips/USACountyCentroids.dbf")
+```{r}
+states<-read.csv("gis/StateNamesAndAbbreviations.csv",as.is=TRUE)
 
+usaCountiesPopCentroids<-read.csv(url("http://www2.census.gov/geo/docs/reference/cenpop2010/county/CenPop2010_Mean_CO.txt"),as.is=TRUE)
+usaCountiesPopCentroids$state<-states$Postal.Code[match(usaCountiesPopCentroids$STNAME,states$State)]
+usaCountiesPopCentroids$STATEFIPS<-with(usaCountiesPopCentroids,ifelse(STATEFP<10,paste("0",STATEFP,sep=""),as.character(STATEFP)))
+usaCountiesPopCentroids$COUNTYNAME<-usaCountiesPopCentroids$COUNAME
+
+str(usaCountiesGeoCentroids)
+str(usaCountiesPopCentroids)
+usaCountiesPopCentroids$COUNTYFIPS<-with(usaCountiesPopCentroids,ifelse(COUNTYFP<10,
+									paste("00",COUNTYFP,sep=""),
+									ifelse(COUNTYFP<100,paste("0",COUNTYFP,sep=""),
+									       as.character(COUNTYFP))))
+
+
+usaCountiesGeoCentroids<-read.dbf("gis/AddCombiFips/USACountyCentroids.dbf",as.is=TRUE)
+
+tmp<-t(sapply(split(usaCountiesGeoCentroids,usaCountiesGeoCentroids$COMBIFIPS),function(dat){
+				     sapply(dat,function(x){
+					      if(is.character(x)){ 
+						return(unique(x))
+					      } else {
+						return(mean(x))
+					      }})}))
+
+usaCountiesGeoCentroidsAvg<-as.data.frame(tmp,stringsAsFactors=FALSE)
+usaCountiesGeoCentroidsAvg$CENTRDLON<-as.numeric(usaCountiesGeoCentroidsAvg$CENTRDLON)
+usaCountiesGeoCentroidsAvg$CENTRDLAT<-as.numeric(usaCountiesGeoCentroidsAvg$CENTRDLAT)
+str(usaCountiesGeoCentroidsAvg)
+
+## Dumping repeated counties --- basically, multi-island counties with multiple geographic centroids
+censusCounties<-merge(usaCountiesPopCentroids,usaCountiesGeoCentroidsAvg,all.x=TRUE,all.y=FALSE,by=c("COUNTYFIPS","STATEFIPS"))
+
+## Clifton Forge, VA is a town not a county as of 2010, but only in usaCountiesGeo so not in this file
+## censusCounties<-censusCounties[censusCounties$COUNTYNAME.x!="Clifton Forge",]
+
+summary(censusCounties)
+
+## There are a few places with population centroids but no geographic centroids. This is ok. I think that we'd prefer population centroids anyway.
+blah<-censusCounties[is.na(censusCounties$CENTRDLAT),"COUNTYNAME.x"]
+countyCounts$county[countyCounts$county %in% blah]
+grep("Prince",countyCounts$county,value=TRUE)
+censusCounties$COUNTYNAME.x[censusCounties$COUNTYNAME.x=="Prince of Wales-Hyder"]<-"Prince Wales Hyder"
+
+## Remove Puerto Rico
+censusCounties<-censusCounties[!(censusCounties$STNAME=="Puerto Rico" | censusCounties$state=="PR" | censusCounties$STATEFIPS=="72"),]
+stopifnot(all(is.na(unlist(censusCounties[is.na(censusCounties$state),]))))
+censusCounties<-censusCounties[!is.na(censusCounties$state),]
+
+## Merge onto existing data.
+
+censusCounties$county<-censusCounties$COUNTYNAME.x
+usaCountiesPopCentroids$COUNTYNAME[usaCountiesPopCentroids$COUNTYNAME=="Prince of Wales-Hyder"]<-"Prince Wales Hyder"
+usaCountiesPopCentroids$county<-usaCountiesPopCentroids$COUNTYNAME
+
+tmpdat<-merge(countyCounts,censusCounties,by=c("county","state"),all.x=TRUE,all.y=FALSE)
+##tmpdat<-merge(countyCounts,usaCountiesPopCentroids,by=c("county","state"),all.x=TRUE,all.y=FALSE)
+tmpdat$ids<-paste(tmpdat$county,tmpdat$state,sep=", ")
+with(tmpdat,table(ids)[table(ids)!=1])
+blah<-names(with(tmpdat,table(ids)[table(ids)!=1]))
+blahdat<-tmpdat[tmpdat$id %in% blah,]
+blahdat<-blahdat[order(blahdat$county,blahdat$POPULATION,decreasing=TRUE),]
+
+
+## We have duplicated records because, I think, some citys and counties are both cities and counties.
+## https://en.wikipedia.org/wiki/List_of_counties_in_Virginia
+
+## Which one to use? Which are referred to in the USDA data?
+
+## The county FIPS codes are (from the TR-65 FIPS Code Chart)
+
+bad<-with(tmpdat,{(county=="Richmond"   & state=="VA" &   COUNTYFIPS!="159")  |
+	          (county=="Bedford"   & state=="VA" &   COUNTYFIPS!="019") |
+	          (county=="Fairfax"   & state=="VA" &   COUNTYFIPS!="059") |
+	          (county=="Roanoke"   & state=="VA" &   COUNTYFIPS!="161")|
+	          (county=="Franklin"  & state=="VA" &  COUNTYFIPS!="067") |
+	          (county=="Baltimore" & state=="MD" & COUNTYFIPS!="005")})
+
+tmpdat<-tmpdat[!bad,]
+stopifnot(all(table(tmpdat$ids)==1))
+row.names(tmpdat)<-tmpdat$ids
+
+```
+
+# Find pairs
+
+
+Remove counties with only 1 farmer
+```{r}
+tmpdat<-tmpdat[tmpdat$n>1,]
+```
+
+Remove counties with no geographic information:
+```{r}
+tmpdat<-tmpdat[!is.na(tmpdat$LATITUDE),]
+```
+
+Also trim the top and bottom 1 percent of counties (in terms of size)
+
+```{r}
+stateCountyFarmDist<-tapply(tmpdat$n,tmpdat$state,function(x){ quantile(x,c(0,.01,.1,.25,.5,.75,.9,.99,1)) })
+
+datList<-lapply(split(tmpdat,tmpdat$state),function(dat){
+		  qs<-quantile(dat$n,c(.01,.99))
+		  return(dat[dat$n >= qs[[1]] & dat$n <= qs[[2]],])
+		  })
+
+sapply(datList,nrow)
+sum(sapply(datList,nrow))
+
+wrkdat<-do.call("rbind",datList)
 
 ```
 
 ```{r}
 library(nbpMatching)
+
+scalarDist<-function(var,scalefactor=1){
+  ## Utility function to make n x n abs dist matrices
+  ## Scalefactor helps us turn fractions into integers since nbpMatching needs
+  ## integers
+  outer(var,var,FUN=function(x,y){
+    as.integer(abs(x-y)*scalefactor)
+  })
+}
+
+## Distance between counties in terms of number of farmers
+numfarmers<-wrkdat$n
+names(numfarmers)<-row.names(wrkdat)
+sizeDist<-scalarDist(numfarmers)
+
+## Distance between centroids of population
+popCentroidDist<-as.matrix(dist(wrkdat[,c("LATITUDE","LONGITUDE")]))
+
+## Setup the penalty
+sizeDist[1:5,1:5]
+popCentroidDist[1:5,1:5]
+
+maxDists<-apply(popCentroidDist,1,max)
+
+tmp<-popCentroidDist
+diag(tmp)<-0
+
+sizeDist[1:5,1:5]+tmp[1:5,1:5]
+
+thedist<-1000*sizeDist+tmp
+
+thedistDM<-distancematrix(thedist)
+
+## This is inelegant but intelligible and not slow
+pairsByState<-lapply(split(wrkdat,wrkdat$state), function(dat){
+		       ## message(unique(dat$state))
+		       numfarmers<-dat$n
+		       names(numfarmers)<-row.names(dat)
+		       sizeDist<-distancematrix(scalarDist(numfarmers))
+		       nbpm<-nonbimatch(sizeDist)
+		       thepairs<-get.sets(nbpm$matches,remove.unpaired=TRUE)
+		       levels(thepairs)<-paste(unique(dat$state),levels(thepairs),sep=":")
+		       thepairsA<-as.character(thepairs)
+		       names(thepairsA)<-names(thepairs)
+		       return(thepairsA)
+  })
+
+## Because some states have an odd number of counties, one is excluded.
+sum(sapply(pairsByState,length))
+sapply(pairsByState,length)
+## Compare to:
+table(wrkdat$state)
+sum(table(wrkdat$state))
+nrow(wrkdat)
+
+for(i in 1:length(pairsByState)){
+  message(i)
+  wrkdat[names(pairsByState[[i]]),"pm1"]<-pairsByState[[i]]
+}
+
+stopifnot(all(table(wrkdat$pm1)==2))
+```
+
+How well did the matching do? Here are descriptives of the pairs.
+
+```{r}
+pairDiffsN<-with(wrkdat[!is.na(wrkdat$pm1),],tapply(n,pm1,function(x){ abs(diff(x)) }) )
+summary(pairDiffsN)
+quantile(pairDiffsN,seq(0,1,.1))
+
+```
+
+```{r}
+## Maybe use a gist or something for this
+source(url("http://www.jakebowers.org/Matching/nonbimatchingfunctions.R"))
+
+```
+
+```{r}
 
 
 ```
