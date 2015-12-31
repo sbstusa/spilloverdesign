@@ -69,7 +69,7 @@ If we are randomly assigning counties to saturation, we should also probably sho
 
 ## Other county characteristics that moderate treatment and/or predict outcomes?
 
-# Saturation 
+# Saturation
 
 Within blocks, we know that we want at least one county at saturation 0% (i.e the "pure control") condition.
 
@@ -77,7 +77,7 @@ Within blocks, we know that we want at least one county at saturation 0% (i.e th
 
 We have two main effects: the ITT (whereby we compare treated to pure control individuals), the Spillover on the Non-Treated (SNT) (whereby we compare non-treated individuals in a county with some saturation $\pi>0$ to pure control individuals (people in counties with $\pi=0$).
 
-The power of the design will depend on overall experimental pool $N$ (roughly 3 million); number treated $n_t$; the variation in the outcome, $Y$; the size of the direct effect of treatment; the size of the spillover effect; the intra-county dependence (measured by the intra-cluster correlation coefficient (ICC)); and the correlation between treatment status within counties. The Baird et al 2015 piece provides 
+The power of the design will depend on overall experimental pool $N$ (roughly 3 million); number treated $n_t$; the variation in the outcome, $Y$; the size of the direct effect of treatment; the size of the spillover effect; the intra-county dependence (measured by the intra-cluster correlation coefficient (ICC)); and the correlation between treatment status within counties. The Baird et al 2015 piece provides
 
 ## A Note on Inferential Frameworks
 
@@ -88,20 +88,43 @@ The Blair et al 2015 piece uses a random effects/model-based mode for statistica
 
 The following reads the data from Google Drive, assuming that there is a Google Sheet called "county-counts.csv" in your sheets directory.
 
-```{r}
+```{r getdatafromgoogle}
 library(googlesheets)
-countyCountsGS<-gs_title("county-counts.csv") ## get info about the data
-countyCounts<-gs_read_csv(countyCountsGS)
+countyCountsGS<-gs_title("countyCountsFIPS.csv") ## get info about the data
+countyCounts<-as.data.frame(gs_read_csv(countyCountsGS,as.is=TRUE),stringsAsFactors=FALSE)
+## countyCounts<-countyCounts[countyCounts$state!="PR",]
 str(countyCounts)
-countyCounts<-as.data.frame(countyCounts,stringsAsFactors=FALSE)
+countyCounts$STATEFIPS<-with(countyCounts,ifelse(state.fips<10,paste("0",state.fips,sep=""),as.character(state.fips)))
+countyCounts$COUNTYNAME<-countyCounts$county
+countyCounts$COUNTYFIPS<-with(countyCounts,ifelse(county.fips<10,
+						  paste("00",county.fips,sep=""),
+						  ifelse(county.fips<100,paste("0",county.fips,sep=""),
+							 as.character(county.fips))))
+
+countyCounts$combifips<-with(countyCounts,paste(STATEFIPS,COUNTYFIPS,sep=""))
+str(countyCounts)
 ```
 
-```{r}
+```{r descusdadat}
 sapply(countyCounts,function(x){ sum(is.na(x) | x=="" ) })
 with(countyCounts,tapply(n,state,sum)) ## N by state
 with(countyCounts,tapply(county,state,function(x){ length(unique(x) ) })) ## number of counties by state
 summary(with(countyCounts,tapply(n,county,sum))) ## number of farmers by county
 sapply(split(countyCounts$n,countyCounts$state),function(x){ summary(x) }) ## dist of county sizes by state
+```
+
+Remove counties with fewer than 2 farmers (these seem to be duplicates in the file anyway):
+
+```{r}
+countyCounts<-countyCounts[countyCounts$n>2,]
+names(table(countyCounts$combifips))[table(countyCounts$combifips)>1]
+```
+
+Anchorage is still duplicated, so removing by hand. Eventually the input file should only have one row per county.
+
+```{r}
+countyCounts<-countyCounts[!(countyCounts$n==4 & countyCounts$combifips=="02020"),]
+stopifnot(all(table(countyCounts$combifips)==1))
 ```
 
 
@@ -119,50 +142,71 @@ County Adjacency:
 
 ## County Adjacency
 
-This file required a bit of reformatting work.
+This file required a bit of reformatting work. This next run once and by hand at the command line. The countyAdjClean.txt file will be in the repository.
 
 ```
-##These are bash commands
+##These are bash commands.
+## They are currently in gis/setupAdjData.sh which can be run at the command line.
 curl -O http://www2.census.gov/geo/docs/reference/county_adjacency.txt
-## Add "Watonwan County, MN" to line 9625
-## This next doesn't work. doing it by hand
-##sed -i.bak '9629s/.*/\"Watonwan County\, MN\"\t27165\t\"Blue Earth County\, MN\"\t27013' county_adjacency.txt
 cp county_adjacency.txt tmp1.txt
 LC_CTYPE=C LANG=C sed -i.bak $'s/"\t/";\t/g' tmp1.txt
 LC_CTYPE=C LANG=C sed -i.bak $'s/\t\t"/\t\t;;"/g' tmp1.txt
 LC_CTYPE=C LANG=C sed -i.bak $'s/\t"/\t;"/g' tmp1.txt
 LC_CTYPE=C LANG=C sed -i.bak $'s/\t//g' tmp1.txt
+## Add "Watonwan County, MN" to line 9625
+LC_CTYPE=C LANG=C sed -i.bak '9629s/.*/"Watonwan County, MN";27165;"Blue Earth County, MN";27013/' tmp1.txt
+## Change the old FIPS code of 02195 for Petersburgh Alaska to the new one of 02280
+LC_CTYPE=C LANG=C sed -i.bak 's/02195/02280/g' tmp1.txt
 LC_CTYPE=C LANG=C tr  '\n' ':'  < tmp1.txt > tmp2.txt
 LC_CTYPE=C LANG=C sed -i.bak $'s/:;;/;/g'  tmp2.txt
 LC_CTYPE=C LANG=C sed -i.bak $'s/:/\\\n/g'  tmp2.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/ County//g' tmp2.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/ Census Area//g' tmp2.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/ and Borough//g' tmp2.txt
+LC_CTYPE=C LANG=C sed -i.bak $'s/ Borough//g' tmp2.txt
 cp tmp2.txt countyAdjClean.txt
 ## change encoding of some non-English characters like Doña Ana County, NM, doing it by hand in vim:
 ### s/Do?a/Dona/gc
 ```
 
 
-```{r}
+```{r readadjmat}
 ## https://stackoverflow.com/questions/5411979/state-name-to-abbreviation-in-r
 
-Sys.setlocale('LC_ALL','C') 
+Sys.setlocale('LC_ALL','C')
 
 cntyAdjList1<-scan("gis/countyAdjClean.txt",what="",sep="\n",quote='\"')
 cntyAdjList2<-strsplit(cntyAdjList1,";")
-centerCounties<-sapply(cntyAdjList2,function(obj){obj[1]})
-centerCounties[centerCounties=="Prince of Wales-Hyder Census Area"]<-"Prince Wales Hyder"
-
-names(cntyAdjList2)<-centerCounties
+centerCounties1<-sapply(cntyAdjList2,function(obj){obj[1]})
+centerCountiesFIPS1<-sapply(cntyAdjList2,function(obj){obj[2]})
+centerCounties1[centerCounties1=="Prince of Wales-Hyder Census Area"]<-"Prince Wales Hyder"
+names(cntyAdjList2)<-centerCounties1
 
 ## Remove Puerto Rico
-centerCounties<-centerCounties[grep(", PR$",centerCounties,invert=TRUE)]
-adjacentCounties<-lapply(cntyAdjList2,function(x){ x[5:length(x)] })
+centerCounties2<-centerCounties1[grep("PR$|VI$|GU$|AS$|MP$",centerCounties1,invert=TRUE)]
+centerCountiesFIPS2<-centerCountiesFIPS1[grep("PR$|VI$|GU$|AS$|MP$",centerCounties1,invert=TRUE)]
+cntyAdjList3<-cntyAdjList2[centerCounties2]
+
+adjacentCounties<-lapply(cntyAdjList3,function(x){
+			   if(length(x)<5){
+			     return("None")
+			   } else {
+			     grep(",",x[3:length(x)],value=TRUE)
+}})
+
+isolatedCounties<-sapply(adjacentCounties,function(x){ all(x=="None") })
+cntyAdjList3[isolatedCounties]
+
+adjacentCountiesFIPS<-lapply(cntyAdjList3,function(x){ grep('[0-9]$',x[3:length(x)],value=TRUE) })
+names(adjacentCountiesFIPS)<-centerCountiesFIPS2
+
 ```
 
 
 
 ## Centroids based on geography and based on population density.
 
-```{r}
+```{r setupcensusfiles}
 states<-read.csv("gis/StateNamesAndAbbreviations.csv",as.is=TRUE)
 
 usaCountiesPopCentroids<-read.csv(url("http://www2.census.gov/geo/docs/reference/cenpop2010/county/CenPop2010_Mean_CO.txt"),as.is=TRUE)
@@ -181,7 +225,7 @@ usaCountiesGeoCentroids<-read.dbf("gis/AddCombiFips/USACountyCentroids.dbf",as.i
 
 tmp<-t(sapply(split(usaCountiesGeoCentroids,usaCountiesGeoCentroids$COMBIFIPS),function(dat){
 				     sapply(dat,function(x){
-					      if(is.character(x)){ 
+					      if(is.character(x)){
 						return(unique(x))
 					      } else {
 						return(mean(x))
@@ -220,25 +264,22 @@ usaCountiesPopCentroids$county<-usaCountiesPopCentroids$COUNTYNAME
 tmpdat<-merge(countyCounts,censusCounties,by=c("county","state"),all.x=TRUE,all.y=FALSE)
 ##tmpdat<-merge(countyCounts,usaCountiesPopCentroids,by=c("county","state"),all.x=TRUE,all.y=FALSE)
 tmpdat$ids<-paste(tmpdat$county,tmpdat$state,sep=", ")
-with(tmpdat,table(ids)[table(ids)!=1])
-blah<-names(with(tmpdat,table(ids)[table(ids)!=1]))
-blahdat<-tmpdat[tmpdat$id %in% blah,]
-blahdat<-blahdat[order(blahdat$county,blahdat$POPULATION,decreasing=TRUE),]
 
 
 ## We have duplicated records because, I think, some citys and counties are both cities and counties.
 ## https://en.wikipedia.org/wiki/List_of_counties_in_Virginia
-
-## Which one to use? Which are referred to in the USDA data?
-
+with(tmpdat,table(ids)[table(ids)!=1])
+blah<-names(with(tmpdat,table(ids)[table(ids)!=1]))
+blahdat<-tmpdat[tmpdat$ids %in% blah,]
+blahdat<-blahdat[order(blahdat$county,blahdat$POPULATION,decreasing=TRUE),]
 ## The county FIPS codes are (from the TR-65 FIPS Code Chart)
 
-bad<-with(tmpdat,{(county=="Richmond"   & state=="VA" &   COUNTYFIPS!="159")  |
-	          (county=="Bedford"   & state=="VA" &   COUNTYFIPS!="019") |
-	          (county=="Fairfax"   & state=="VA" &   COUNTYFIPS!="059") |
-	          (county=="Roanoke"   & state=="VA" &   COUNTYFIPS!="161")|
-	          (county=="Franklin"  & state=="VA" &  COUNTYFIPS!="067") |
-	          (county=="Baltimore" & state=="MD" & COUNTYFIPS!="005")})
+bad<-with(tmpdat,{(county=="Richmond"  & state=="VA" & COUNTYFP!="159")  |
+	          (county=="Bedford"   & state=="VA" & COUNTYFP!="019") |
+	          (county=="Fairfax"   & state=="VA" & COUNTYFP!="059") |
+	          (county=="Roanoke"   & state=="VA" & COUNTYFP!="161")|
+	          (county=="Franklin"  & state=="VA" & COUNTYFP!="067") |
+	          (county=="Baltimore" & state=="MD" & COUNTYFP!="005")})
 
 tmpdat<-tmpdat[!bad,]
 stopifnot(all(table(tmpdat$ids)==1))
@@ -273,6 +314,7 @@ sapply(datList,nrow)
 sum(sapply(datList,nrow))
 
 wrkdat<-do.call("rbind",datList)
+row.names(wrkdat)<-wrkdat$combifips
 
 ```
 
@@ -280,7 +322,7 @@ wrkdat<-do.call("rbind",datList)
 
 The input to the pairing function is a matrix of distances. So first we make distance matrices.
 
-```{r}
+```{r setuppairs}
 library(nbpMatching)
 
 scalarDist<-function(var,scalefactor=1){
@@ -292,35 +334,68 @@ scalarDist<-function(var,scalefactor=1){
   })
 }
 
-## Matrix recording whether two counties are adjacent.
 
+## Make a matrix with 1 indicating that two counties are touching and 0 otherwise.
+#### Not all counties in the adjacency matrix are represented in the working data from the USDA
+#### blah<-sapply(centerCountiesFIPS2,function(x){
+#### 	       all(adjacentCountiesFIPS[[x]] %in% wrkdat$combifips ) })
+#### table(blah)
 
+adjList<-lapply(wrkdat$combifips,function(x){
+		  wrkdat$combifips %in% adjacentCountiesFIPS[[x]]
+	       })
+names(adjList)<-wrkdat$combifips
 
+adjMat<-do.call("rbind",adjList)
+stopifnot(all(diag(adjMat))) ## all diagonals should be true
+adjMat<-adjMat*1 # convert to numbers
+dimnames(adjMat)<-list(wrkdat$combifips,wrkdat$combifips)
+diag(adjMat)<-0 ## set self-distances to zero for ease in penalty creation below
+wrkdat[which(rowMeans(adjMat)==0 ),] ## which counties have to adjacent counties (Honolulu and Maui in Hawaii)
 
-datByState<-split(wrkdat,wrkdat$state)
+## Create distance matrix for differences in number of farmers
+numfarmers<-wrkdat$n
+names(numfarmers)<-row.names(wrkdat)
+sizeDist<-scalarDist(numfarmers)
+
+## Exclude delaware
+wrkdat<-wrkdat[wrkdat$state!="DE",]
+
+## Get the fips codes by state so that we can do state-by-state matching
+fipsByState<-split(wrkdat$combifips,wrkdat$state)
+
+blah<-sapply(fipsByState,function(fips){ isSymmetric(adjMat[fips,fips]) })
+
+mnfips<-fipsByState[["MN"]]
+mnList<-lapply(mnfips,function(x){
+		  mnfips %in% adjacentCountiesFIPS[[x]]
+	       })
+names(mnList)<-mnfips
+mnMat<-do.call("rbind",mnList)
+
+getStatePairs<-function(fips){
+  adjD<-adjMat[fips,fips]
+  sizeD<-sizeDist[fips,fips]
+  maxSizeDist<-max(as.vector(sizeD))
+  penMat<- distancematrix( sizeD + adjD*maxSizeDist )  ## add the maximum distance to any entry where two counties are adjacent
+  nbpm<-nonbimatch(penMat)
+  thepairs<-get.sets(nbpm$matches,remove.unpaired=TRUE)
+  #levels(thepairs)<-paste(unique(dat$state),levels(thepairs),sep=":")
+  #thepairsA<-as.character(thepairs)
+  #names(thepairsA)<-names(thepairs)
+  return(thepairs)
+}
+
 
 ## This is inelegant but intelligible and not slow
-pairsByState<-lapply(split(wrkdat,wrkdat$state), function(dat){
-		       ## message(unique(dat$state))
-		       dat<-datByState[[2]]
-		       numfarmers<-dat$n
-		       names(numfarmers)<-row.names(dat)
-		       sizeDist<-scalarDist(numfarmers)
-		       popCentroidDist<-as.matrix(dist(dat[,c("LATITUDE","LONGITUDE")]))
-		       tmp<- 1 - popCentroidDist/max(as.vector(popCentroidDist))
-		       diag(tmp)<-0
-		       pendist<- sizeDist + tmp*sizeDist
-		       nbpm<-nonbimatch(distancematrix(pendist))
-		       thepairs<-get.sets(nbpm$matches,remove.unpaired=TRUE)
-		       levels(thepairs)<-paste(unique(dat$state),levels(thepairs),sep=":")
-		       thepairsA<-as.character(thepairs)
-		       names(thepairsA)<-names(thepairs)
-		       return(thepairsA)
-  })
+pairsByState<-lapply(1:length(fipsByState),function(i){
+		       message(names(fipsByState)[i])
+		       fips<-fipsByState[[i]]
+		       getStatePairs(fips)})
 
-## Because some states have an odd number of counties, one is excluded.
-sum(sapply(pairsByState,length))
-sapply(pairsByState,length)
+		     ## Because some states have an odd number of counties, one is excluded.
+		     sum(sapply(pairsByState,length))
+		     sapply(pairsByState,length)
 ## Compare to:
 table(wrkdat$state)
 sum(table(wrkdat$state))
@@ -352,7 +427,7 @@ source(url("http://www.jakebowers.org/Matching/nonbimatchingfunctions.R"))
 
 ## Assign one county to possible treatment
 
-## Calculate the number of treatment assignments 
+## Calculate the number of treatment assignments
 
 
 # References

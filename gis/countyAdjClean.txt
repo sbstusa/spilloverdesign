@@ -74,7 +74,7 @@
 "Dillingham, AK";02070;"Bethel, AK";02050;"Bristol Bay, AK";02060;"Dillingham, AK";02070;"Lake and Peninsula, AK";02164
 "Fairbanks North Star, AK";02090;"Denali, AK";02068;"Fairbanks North Star, AK";02090;"Southeast Fairbanks, AK";02240;"Yukon-Koyukuk, AK";02290
 "Haines, AK";02100;"Haines, AK";02100;"Hoonah-Angoon, AK";02105;"Juneau City, AK";02110;"Skagway Municipality, AK";02230
-"Hoonah-Angoon, AK";02105;"Haines, AK";02100;"Hoonah-Angoon, AK";02105;"Juneau City, AK";02110;"Petersburg, AK";02195;"Sitka City, AK";02220;"Yakutat City, AK";02282
+"Hoonah-Angoon, AK";02105;"Haines, AK";02100;"Hoonah-Angoon, AK";02105;"Juneau City, AK";02110;"Petersburg, AK";02280;"Sitka City, AK";02220;"Yakutat City, AK";02282
 "Juneau City, AK";02110;"Haines, AK";02100;"Hoonah-Angoon, AK";02105;"Juneau City, AK";02110
 "Kenai Peninsula, AK";02122;"Anchorage Municipality, AK";02020;"Bethel, AK";02050;"Kenai Peninsula, AK";02122;"Kodiak Island, AK";02150;"Lake and Peninsula, AK";02164;"Matanuska-Susitna, AK";02170;"Valdez-Cordova, AK";02261
 "Ketchikan Gateway, AK";02130;"Ketchikan Gateway, AK";02130;"Prince of Wales-Hyder, AK";02198;"Wrangell City, AK";02275
@@ -84,14 +84,14 @@
 "Nome, AK";02180;"Nome, AK";02180;"Northwest Arctic, AK";02188;"Wade Hampton, AK";02270;"Yukon-Koyukuk, AK";02290
 "North Slope, AK";02185;"North Slope, AK";02185;"Northwest Arctic, AK";02188;"Yukon-Koyukuk, AK";02290
 "Northwest Arctic, AK";02188;"Nome, AK";02180;"North Slope, AK";02185;"Northwest Arctic, AK";02188;"Yukon-Koyukuk, AK";02290
-"Petersburg, AK";02195;"Hoonah-Angoon, AK";02105;"Petersburg, AK";02195;"Prince of Wales-Hyder, AK";02198;"Sitka City, AK";02220;"Wrangell City, AK";02275
-"Prince of Wales-Hyder, AK";02198;"Ketchikan Gateway, AK";02130;"Petersburg, AK";02195;"Prince of Wales-Hyder, AK";02198;"Wrangell City, AK";02275
-"Sitka City, AK";02220;"Hoonah-Angoon, AK";02105;"Petersburg, AK";02195;"Sitka City, AK";02220
+"Petersburg, AK";02280;"Hoonah-Angoon, AK";02105;"Petersburg, AK";02280;"Prince of Wales-Hyder, AK";02198;"Sitka City, AK";02220;"Wrangell City, AK";02275
+"Prince of Wales-Hyder, AK";02198;"Ketchikan Gateway, AK";02130;"Petersburg, AK";02280;"Prince of Wales-Hyder, AK";02198;"Wrangell City, AK";02275
+"Sitka City, AK";02220;"Hoonah-Angoon, AK";02105;"Petersburg, AK";02280;"Sitka City, AK";02220
 "Skagway Municipality, AK";02230;"Haines, AK";02100;"Skagway Municipality, AK";02230
 "Southeast Fairbanks, AK";02240;"Denali, AK";02068;"Fairbanks North Star, AK";02090;"Matanuska-Susitna, AK";02170;"Southeast Fairbanks, AK";02240;"Valdez-Cordova, AK";02261;"Yukon-Koyukuk, AK";02290
 "Valdez-Cordova, AK";02261;"Anchorage Municipality, AK";02020;"Kenai Peninsula, AK";02122;"Matanuska-Susitna, AK";02170;"Southeast Fairbanks, AK";02240;"Valdez-Cordova, AK";02261;"Yakutat City, AK";02282
 "Wade Hampton, AK";02270;"Bethel, AK";02050;"Nome, AK";02180;"Wade Hampton, AK";02270;"Yukon-Koyukuk, AK";02290
-"Wrangell City, AK";02275;"Ketchikan Gateway, AK";02130;"Petersburg, AK";02195;"Prince of Wales-Hyder, AK";02198;"Wrangell City, AK";02275
+"Wrangell City, AK";02275;"Ketchikan Gateway, AK";02130;"Petersburg, AK";02280;"Prince of Wales-Hyder, AK";02198;"Wrangell City, AK";02275
 "Yakutat City, AK";02282;"Hoonah-Angoon, AK";02105;"Valdez-Cordova, AK";02261;"Yakutat City, AK";02282
 "Yukon-Koyukuk, AK";02290;"Bethel, AK";02050;"Denali, AK";02068;"Fairbanks North Star, AK";02090;"Matanuska-Susitna, AK";02170;"Nome, AK";02180;"North Slope, AK";02185;"Northwest Arctic, AK";02188;"Southeast Fairbanks, AK";02240;"Wade Hampton, AK";02270;"Yukon-Koyukuk, AK";02290
 "Apache, AZ";04001;"Apache, AZ";04001;"Graham, AZ";04009;"Greenlee, AZ";04011;"Navajo, AZ";04017;"Montezuma, CO";08083;"Catron, NM";35003;"Cibola, NM";35006;"McKinley, NM";35031;"San Juan, NM";35045;"San Juan, UT";49037
