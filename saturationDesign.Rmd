@@ -367,42 +367,47 @@ fipsByState<-split(wrkdat$combifips,wrkdat$state)
 blah<-sapply(fipsByState,function(fips){ isSymmetric(adjMat[fips,fips]) })
 
 mnfips<-fipsByState[["MN"]]
-mnList<-lapply(mnfips,function(x){
-		  mnfips %in% adjacentCountiesFIPS[[x]]
+
+for(i in 1:length(mnfips)){
+mnList<-lapply(mnfips[-i],function(x){
+		  mnfips[-i] %in% adjacentCountiesFIPS[[x]]
 	       })
-names(mnList)<-mnfips
+names(mnList)<-mnfips[-i]
 mnMat<-do.call("rbind",mnList)
+print(isSymmetric(mnMat))
+}
+
 
 getStatePairs<-function(fips){
   adjD<-adjMat[fips,fips]
   sizeD<-sizeDist[fips,fips]
   maxSizeDist<-max(as.vector(sizeD))
-  penMat<- distancematrix( sizeD + adjD*maxSizeDist )  ## add the maximum distance to any entry where two counties are adjacent
-  nbpm<-nonbimatch(penMat)
+  penMat<- sizeD + adjD*maxSizeDist   ## add the maximum distance to any entry where two counties are adjacent
+  if( (nrow(penMat) %% 2)!=0){
+    penMat <- make.phantoms(penMat,1) ## delete one county where we have an odd number --- it will be the county least like the others, greatest distance on size and adjacency.
+  }
+  penMatD<-distancematrix(penMat)
+  nbpm<-nonbimatch(penMatD)
   thepairs<-get.sets(nbpm$matches,remove.unpaired=TRUE)
-  #levels(thepairs)<-paste(unique(dat$state),levels(thepairs),sep=":")
-  #thepairsA<-as.character(thepairs)
-  #names(thepairsA)<-names(thepairs)
-  return(thepairs)
+  thepairsA<-as.character(thepairs) ## return as a character rather than a factor to make the state-by-state matching easier
+  names(thepairsA)<-names(thepairs)
+  return(thepairsA)
 }
 
 
 ## This is inelegant but intelligible and not slow
-pairsByState<-lapply(1:length(fipsByState),function(i){
-		       message(names(fipsByState)[i])
-		       fips<-fipsByState[[i]]
+pairsByState<-lapply(fipsByState[grep("MN",names(fipsByState),invert=TRUE)],function(fips){
 		       getStatePairs(fips)})
 
-		     ## Because some states have an odd number of counties, one is excluded.
-		     sum(sapply(pairsByState,length))
-		     sapply(pairsByState,length)
+## Because some states have an odd number of counties, one is excluded.
+sum(sapply(pairsByState,length))
+sapply(pairsByState,length)
 ## Compare to:
 table(wrkdat$state)
 sum(table(wrkdat$state))
 nrow(wrkdat)
 
 for(i in 1:length(pairsByState)){
-  message(i)
   wrkdat[names(pairsByState[[i]]),"pm1"]<-pairsByState[[i]]
 }
 
@@ -412,22 +417,28 @@ stopifnot(all(table(wrkdat$pm1)==2))
 How well did the matching do? Here are descriptives of the pairs.
 
 ```{r}
-pairDiffsN<-with(wrkdat[!is.na(wrkdat$pm1),],tapply(n,pm1,function(x){ abs(diff(x)) }) )
+pairedDat<-wrkdat[!is.na(wrkdat$pm1),]
+pairDiffsN<-with(pairedDat,tapply(n,pm1,function(x){ abs(diff(x)) }) )
 summary(pairDiffsN)
 quantile(pairDiffsN,seq(0,1,.1))
 
 ```
 
+## Choose best pair among the matches within each state restrict to not adjacent
+
 ```{r}
-## Maybe use a gist or something for this
-source(url("http://www.jakebowers.org/Matching/nonbimatchingfunctions.R"))
+
+pairDiffsByState<-lapply(split(pairedDat,pairedDat$state),
+		   function(dat){
+		     with(dat,sort(tapply(n,pm1,function(x){ abs(diff(x)) })) )
+		   })
+
 
 ```
-## Choose best pair among the matches within each state
 
-## Assign one county to possible treatment
+## Assign one county to possible treatment within each pair.
 
-## Calculate the number of treatment assignments
+## Calculate the number of treatment assignments.
 
 
 # References
