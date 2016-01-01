@@ -227,9 +227,7 @@ LC_CTYPE=C LANG=C sed -i.bak $'s/ County//g' tmp2.txt
 LC_CTYPE=C LANG=C sed -i.bak $'s/ Census Area//g' tmp2.txt
 LC_CTYPE=C LANG=C sed -i.bak $'s/ and Borough//g' tmp2.txt
 LC_CTYPE=C LANG=C sed -i.bak $'s/ Borough//g' tmp2.txt
-cp tmp2.txt countyAdjClean.txt
-NA
-### s/Do?a/Dona/gc</code></pre>
+cp tmp2.txt countyAdjClean.txt</code></pre>
 <pre class="r"><code>## https://stackoverflow.com/questions/5411979/state-name-to-abbreviation-in-r
 
 Sys.setlocale('LC_ALL','C')</code></pre>
@@ -296,12 +294,12 @@ str(usaCountiesPopCentroids)</code></pre>
 usaCountiesGeoCentroids&lt;-read.dbf(&quot;gis/AddCombiFips/USACountyCentroids.dbf&quot;,as.is=TRUE)
 
 tmp&lt;-t(sapply(split(usaCountiesGeoCentroids,usaCountiesGeoCentroids$COMBIFIPS),function(dat){
-                     sapply(dat,function(x){
-                          if(is.character(x)){
-                        return(unique(x))
-                          } else {
-                        return(mean(x))
-                          }})}))
+        sapply(dat,function(x){
+             if(is.character(x)){
+               return(unique(x))
+             } else {
+               return(mean(x))
+                                    }})}))
 
 usaCountiesGeoCentroidsAvg&lt;-as.data.frame(tmp,stringsAsFactors=FALSE)
 usaCountiesGeoCentroidsAvg$CENTRDLON&lt;-as.numeric(usaCountiesGeoCentroidsAvg$CENTRDLON)
@@ -393,11 +391,11 @@ blahdat&lt;-blahdat[order(blahdat$county,blahdat$POPULATION,decreasing=TRUE),]
 ## The county FIPS codes are (from the TR-65 FIPS Code Chart)
 
 bad&lt;-with(tmpdat,{(county==&quot;Richmond&quot;  &amp; state==&quot;VA&quot; &amp; COUNTYFP!=&quot;159&quot;)  |
-              (county==&quot;Bedford&quot;   &amp; state==&quot;VA&quot; &amp; COUNTYFP!=&quot;019&quot;) |
-              (county==&quot;Fairfax&quot;   &amp; state==&quot;VA&quot; &amp; COUNTYFP!=&quot;059&quot;) |
-              (county==&quot;Roanoke&quot;   &amp; state==&quot;VA&quot; &amp; COUNTYFP!=&quot;161&quot;)|
-              (county==&quot;Franklin&quot;  &amp; state==&quot;VA&quot; &amp; COUNTYFP!=&quot;067&quot;) |
-              (county==&quot;Baltimore&quot; &amp; state==&quot;MD&quot; &amp; COUNTYFP!=&quot;005&quot;)})
+      (county==&quot;Bedford&quot;   &amp; state==&quot;VA&quot; &amp; COUNTYFP!=&quot;019&quot;) |
+      (county==&quot;Fairfax&quot;   &amp; state==&quot;VA&quot; &amp; COUNTYFP!=&quot;059&quot;) |
+      (county==&quot;Roanoke&quot;   &amp; state==&quot;VA&quot; &amp; COUNTYFP!=&quot;161&quot;)|
+      (county==&quot;Franklin&quot;  &amp; state==&quot;VA&quot; &amp; COUNTYFP!=&quot;067&quot;) |
+      (county==&quot;Baltimore&quot; &amp; state==&quot;MD&quot; &amp; COUNTYFP!=&quot;005&quot;)})
 
 tmpdat&lt;-tmpdat[!bad,]
 stopifnot(all(table(tmpdat$ids)==1))
@@ -416,7 +414,7 @@ row.names(tmpdat)&lt;-tmpdat$ids</code></pre>
 datList&lt;-lapply(split(tmpdat,tmpdat$state),function(dat){
           qs&lt;-quantile(dat$n,c(.01,.99))
           return(dat[dat$n &gt;= qs[[1]] &amp; dat$n &lt;= qs[[2]],])
-          })
+      })
 
 sapply(datList,nrow)</code></pre>
 <pre><code> AK  AL  AR  AZ  CA  CO  CT  DE  FL  GA  HI  IA  ID  IL  IN  KS  KY  LA 
@@ -428,8 +426,8 @@ sapply(datList,nrow)</code></pre>
 <pre class="r"><code>sum(sapply(datList,nrow))</code></pre>
 <pre><code>[1] 2898</code></pre>
 <pre class="r"><code>wrkdat&lt;-do.call(&quot;rbind&quot;,datList)
-## Exclude delaware
-wrkdat&lt;-wrkdat[wrkdat$state!=&quot;DE&quot;,]
+## Exclude delaware, rhode island, and hawaii as having too few counties and people.
+wrkdat&lt;-wrkdat[!(wrkdat$state %in% c(&quot;DE&quot;,&quot;RI&quot;,&quot;HI&quot;)),]
 
 row.names(wrkdat)&lt;-wrkdat$combifips</code></pre>
 <div id="find-pairs-1" class="section level2">
@@ -445,7 +443,7 @@ row.names(wrkdat)&lt;-wrkdat$combifips</code></pre>
 
 adjList&lt;-lapply(wrkdat$combifips,function(x){
           wrkdat$combifips %in% adjacentCountiesFIPS[[x]]
-           })
+      })
 names(adjList)&lt;-wrkdat$combifips
 
 adjMat&lt;-do.call(&quot;rbind&quot;,adjList)
@@ -454,18 +452,12 @@ adjMat&lt;-adjMat*1 # convert to numbers
 dimnames(adjMat)&lt;-list(wrkdat$combifips,wrkdat$combifips)
 diag(adjMat)&lt;-0 ## set self-distances to zero for ease in penalty creation below
 wrkdat[which(rowMeans(adjMat)==0 ),] ## which counties have no adjacent counties (Honolulu and Maui in Hawaii)</code></pre>
-<pre><code>        county state  id state.fips county.fips   n STATEFIPS.x COUNTYNAME
-15003 Honolulu    HI 631         15           3 980          15   Honolulu
-15009     Maui    HI 633         15           9 700          15       Maui
-      COUNTYFIPS.x combifips COUNTYFIPS.y STATEFIPS.y STATEFP COUNTYFP
-15003          003     15003          003          15      15        3
-15009          009     15009          009          15      15        9
-       COUNAME STNAME POPULATION LATITUDE LONGITUDE COUNTYNAME.x
-15003 Honolulu Hawaii     953207 21.37246 -157.9137     Honolulu
-15009     Maui Hawaii     154834 20.86375 -156.4938         Maui
-      COUNTYNAME.y COMBIFIPS CENTRDLON CENTRDLAT          ids
-15003     Honolulu     15003 -169.5021  25.30534 Honolulu, HI
-15009         Maui     15009 -156.7258  20.82911     Maui, HI</code></pre>
+<pre><code> [1] county       state        id           state.fips   county.fips 
+ [6] n            STATEFIPS.x  COUNTYNAME   COUNTYFIPS.x combifips   
+[11] COUNTYFIPS.y STATEFIPS.y  STATEFP      COUNTYFP     COUNAME     
+[16] STNAME       POPULATION   LATITUDE     LONGITUDE    COUNTYNAME.x
+[21] COUNTYNAME.y COMBIFIPS    CENTRDLON    CENTRDLAT    ids         
+&lt;0 rows&gt; (or 0-length row.names)</code></pre>
 <pre class="r"><code>## Some counties in Minnesota are causing a problem with the adjacency matrix which should be symmetric
 ## That is, for example, county 27005 is counted as being adjacent to county 27153 but 27153 is not recorded as being adjacent to county 27005. Since adjacency is a symmetric property (by definition here) I need to fix this.
 problemCountiesBig&lt;-colSums(adjMat)!=rowSums(adjMat)
@@ -523,42 +515,29 @@ $`27167`
 
 adjMat[names(asymCounties),names(asymCounties)]&lt;-as.numeric(
                                 (adjMat[names(asymCounties),names(asymCounties)]+
-                                  t(adjMat[names(asymCounties),names(asymCounties)]))&gt;0
-                                )
+                                 t(adjMat[names(asymCounties),names(asymCounties)]))&gt;0
+                               )
 stopifnot(isSymmetric(adjMat))</code></pre>
+<p>Make a matrix recording absolute differences in number of farmers between all pairs of counties.</p>
 <pre class="r"><code>scalarDist&lt;-function(var,scalefactor=1){
   ## Utility function to make n x n abs dist matrices
   ## Scalefactor helps us turn fractions into integers since nbpMatching needs
   ## integers
   outer(var,var,FUN=function(x,y){
-    as.integer(abs(x-y)*scalefactor)
-  })
+      as.integer(abs(x-y)*scalefactor)
+                               })
 }
-
 
 
 ## Create distance matrix for differences in number of farmers
 numfarmers&lt;-wrkdat$n
 names(numfarmers)&lt;-row.names(wrkdat)
 sizeDist&lt;-scalarDist(numfarmers)
-## Get the fips codes by state so that we can do state-by-state matching
-fipsByState&lt;-split(wrkdat$combifips,wrkdat$state)
-
-blah&lt;-sapply(fipsByState,function(fips){ isSymmetric(adjMat[fips,fips]) })
-
-mnfips&lt;-fipsByState[[&quot;MN&quot;]]
-
-mnList&lt;-lapply(mnfips,function(x){
-          mnfips %in% adjacentCountiesFIPS[[x]]
-           })
-names(mnList)&lt;-mnfips
-mnMat&lt;-do.call(&quot;rbind&quot;,mnList)
-print(isSymmetric(mnMat))</code></pre>
-<pre><code>[1] FALSE</code></pre>
+## This will be an ingredient in the penalty that, we hope, forces pairs that are not adjacent but yet which are similar in terms of size and within the same state into pairs.
+maxSizeDist&lt;-max(as.vector(sizeDist))</code></pre>
 <pre class="r"><code>getStatePairs&lt;-function(fips){
   adjD&lt;-adjMat[fips,fips]
   sizeD&lt;-sizeDist[fips,fips]
-  maxSizeDist&lt;-max(as.vector(sizeD))
   penMat&lt;- sizeD + adjD*maxSizeDist   ## add the maximum distance to any entry where two counties are adjacent
   if( (nrow(penMat) %% 2)!=0){
     penMat &lt;- make.phantoms(penMat,1) ## delete one county where we have an odd number --- it will be the county least like the others, greatest distance on size and adjacency.
@@ -571,57 +550,85 @@ print(isSymmetric(mnMat))</code></pre>
   return(thepairsA)
 }
 
+## Get the fips codes by state so that we can do state-by-state matching
+fipsByState&lt;-split(wrkdat$combifips,wrkdat$state)
 
-## This is inelegant but intelligible and not slow
-pairsByState&lt;-lapply(fipsByState[grep(&quot;MN&quot;,names(fipsByState),invert=TRUE)],function(fips){
-               getStatePairs(fips)})
+## This is inelegant but intelligible and not slow because the matching problems are small in each state
+pairsByState&lt;-lapply(fipsByState,function(fips){ getStatePairs(fips)})
 
-## Because some states have an odd number of counties, one is excluded.
+## An example of the output. Each county has a categorical variable (a character var) with a label for the pair it is in.
+str(pairsByState[1:2])</code></pre>
+<pre><code>List of 2
+ $ AK: Named chr [1:22] &quot;02013-02275&quot; &quot;02016-02185&quot; &quot;02050-02280&quot; &quot;02060-02188&quot; ...
+  ..- attr(*, &quot;names&quot;)= chr [1:22] &quot;02013&quot; &quot;02016&quot; &quot;02050&quot; &quot;02060&quot; ...
+ $ AL: Named chr [1:64] &quot;01001-01013&quot; &quot;01003-01077&quot; &quot;01005-01021&quot; &quot;01007-01131&quot; ...
+  ..- attr(*, &quot;names&quot;)= chr [1:64] &quot;01001&quot; &quot;01003&quot; &quot;01005&quot; &quot;01007&quot; ...</code></pre>
+<pre class="r"><code>## Because some states have an odd number of counties, one is excluded.
 sum(sapply(pairsByState,length))</code></pre>
-<pre><code>[1] 2792</code></pre>
+<pre><code>[1] 2870</code></pre>
 <pre class="r"><code>sapply(pairsByState,length)</code></pre>
-<pre><code> AK  AL  AR  AZ  CA  CO  CT  FL  GA  HI  IA  ID  IL  IN  KS  KY  LA  MA 
- 22  64  72  12  56  62   6  62 154   2  96  42  96  86 100 116  52  12 
- MD  ME  MI  MO  MS  MT  NC  ND  NE  NH  NJ  NM  NV  NY  OH  OK  OR  PA 
- 16  14  78 104  80  54  98  50  90   8  18  30  14  58  86  74  34  64 
- RI  SD  TN  TX  UT  VA  VT  WA  WI  WV  WY 
-  2  64  94 246  26  90  12  36  68  52  20 </code></pre>
+<pre><code> AK  AL  AR  AZ  CA  CO  CT  FL  GA  IA  ID  IL  IN  KS  KY  LA  MA  MD 
+ 22  64  72  12  56  62   6  62 154  96  42  96  86 100 116  52  12  16 
+ ME  MI  MN  MO  MS  MT  NC  ND  NE  NH  NJ  NM  NV  NY  OH  OK  OR  PA 
+ 14  78  82 104  80  54  98  50  90   8  18  30  14  58  86  74  34  64 
+ SD  TN  TX  UT  VA  VT  WA  WI  WV  WY 
+ 64  94 246  26  90  12  36  68  52  20 </code></pre>
 <pre class="r"><code>## Compare to:
 table(wrkdat$state)</code></pre>
 <pre><code>
- AK  AL  AR  AZ  CA  CO  CT  FL  GA  HI  IA  ID  IL  IN  KS  KY  LA  MA 
- 23  64  72  13  56  62   6  63 155   2  96  42  96  87 101 116  53  12 
- MD  ME  MI  MN  MO  MS  MT  NC  ND  NE  NH  NJ  NM  NV  NY  OH  OK  OR 
- 17  14  79  83 105  80  54  98  50  91   8  19  30  14  59  86  75  34 
- PA  RI  SD  TN  TX  UT  VA  VT  WA  WI  WV  WY 
- 65   3  64  94 247  27  90  12  37  69  53  21 </code></pre>
+ AK  AL  AR  AZ  CA  CO  CT  FL  GA  IA  ID  IL  IN  KS  KY  LA  MA  MD 
+ 23  64  72  13  56  62   6  63 155  96  42  96  87 101 116  53  12  17 
+ ME  MI  MN  MO  MS  MT  NC  ND  NE  NH  NJ  NM  NV  NY  OH  OK  OR  PA 
+ 14  79  83 105  80  54  98  50  91   8  19  30  14  59  86  75  34  65 
+ SD  TN  TX  UT  VA  VT  WA  WI  WV  WY 
+ 64  94 247  27  90  12  37  69  53  21 </code></pre>
 <pre class="r"><code>sum(table(wrkdat$state))</code></pre>
-<pre><code>[1] 2897</code></pre>
+<pre><code>[1] 2892</code></pre>
 <pre class="r"><code>nrow(wrkdat)</code></pre>
-<pre><code>[1] 2897</code></pre>
-<pre class="r"><code>for(i in 1:length(pairsByState)){
+<pre><code>[1] 2892</code></pre>
+<pre class="r"><code>## Add the pair variable to the data
+for(i in 1:length(pairsByState)){
   wrkdat[names(pairsByState[[i]]),&quot;pm1&quot;]&lt;-pairsByState[[i]]
 }
 
+## For all non-missing values of the paired variable, we should have exactly 2 unique values.
 stopifnot(all(table(wrkdat$pm1)==2))</code></pre>
-<p>How well did the matching do? Here are descriptives of the pairs.</p>
+<p>How well did the matching do? Here are descriptives of the pairs in terms of size and adjacency. We have one pair that is adjacent, so we will avoid it. Also, since we did not ask the algorithmn to exclude bad matches, we have some pairs that are very different in number of farmers. We will also avoid them when choosing the one (or a few more) pairs for the design.</p>
 <pre class="r"><code>pairedDat&lt;-wrkdat[!is.na(wrkdat$pm1),]
 pairDiffsN&lt;-with(pairedDat,tapply(n,pm1,function(x){ abs(diff(x)) }) )
 summary(pairDiffsN)</code></pre>
 <pre><code>   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   0.00    5.00   16.00   44.14   40.25 1443.00 </code></pre>
+   0.00    5.00   16.00   43.52   40.00 1443.00 </code></pre>
 <pre class="r"><code>quantile(pairDiffsN,seq(0,1,.1))</code></pre>
 <pre><code>    0%    10%    20%    30%    40%    50%    60%    70%    80%    90% 
-   0.0    2.0    4.0    7.0   11.0   16.0   23.0   34.0   51.0  100.5 
+   0.0    2.0    4.0    7.0   11.0   16.0   23.0   33.8   51.0   99.0 
   100% 
 1443.0 </code></pre>
+<pre class="r"><code>pairDiffsAdj&lt;-with(pairedDat,tapply(combifips,pm1,function(x){ all(as.vector(adjMat[x,x]==0)) }))
+table(pairDiffsAdj)</code></pre>
+<pre><code>pairDiffsAdj
+TRUE 
+1435 </code></pre>
 </div>
-<div id="choose-best-pair-among-the-matches-within-each-state-restrict-to-not-adjacent" class="section level2">
-<h2>Choose best pair among the matches within each state restrict to not adjacent</h2>
-<pre class="r"><code>pairDiffsByState&lt;-lapply(split(pairedDat,pairedDat$state),
-           function(dat){
-             with(dat,sort(tapply(n,pm1,function(x){ abs(diff(x)) })) )
-           })</code></pre>
+<div id="choose-best-pair-within-each-state" class="section level2">
+<h2>Choose best pair within each state</h2>
+<pre class="r"><code>pairsByState&lt;-sapply(split(pairedDat$pm1,pairedDat$state),unique) ## otherwise we'll have two entries for each pair
+
+pairAvgN&lt;-with(pairedDat,tapply(n,pm1,mean))
+
+chooseBestPair&lt;-function(pm){
+  ## Given a vector of pair match labels, choose the best pair (closest match in size that is not adjacent with largest sample)
+  okpairs&lt;-names(pairDiffsN[pm][pairDiffsAdj[pm]]) ## exclude adjacent pairs
+  sizeDiffs&lt;-pairDiffsN[okpairs]
+  avgN&lt;-pairAvgN[okpairs]
+  bestpairs&lt;-sizeDiffs[sizeDiffs==min(sizeDiffs)] ## select closest matched pairs
+  thebestpair&lt;-bestpairs[avgN[names(bestpairs)]==max(avgN[names(bestpairs)])] ## among closest matches, choose max N
+  return(names(thebestpair))
+}
+
+
+set.seed(20160101)
+sampledPair&lt;-lapply(pairsByState,function(pm){ message(pm[1]); chooseBestPair(pm) })</code></pre>
 </div>
 <div id="assign-one-county-to-possible-treatment-within-each-pair." class="section level2">
 <h2>Assign one county to possible treatment within each pair.</h2>

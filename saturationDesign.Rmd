@@ -38,19 +38,19 @@ output:
 
 require(knitr)
 opts_chunk$set(
-  tidy=FALSE,     # display code as typed
-  size="small",    # slightly smaller font for code
-  echo=TRUE,
-  results='markup',
-  strip.white=TRUE,
-  fig.path='figs/fig',
-  cache=FALSE,
-  highlight=TRUE,
-  width.cutoff=132,
-  size='footnotesize',
-  out.width='.9\\textwidth',
-  message=FALSE,
-  comment=NA)
+	       tidy=FALSE,     # display code as typed
+	       size="small",    # slightly smaller font for code
+	       echo=TRUE,
+	       results='markup',
+	       strip.white=TRUE,
+	       fig.path='figs/fig',
+	       cache=FALSE,
+	       highlight=TRUE,
+	       width.cutoff=132,
+	       size='footnotesize',
+	       out.width='.9\\textwidth',
+	       message=FALSE,
+	       comment=NA)
 ```
 
 
@@ -165,8 +165,6 @@ LC_CTYPE=C LANG=C sed -i.bak $'s/ Census Area//g' tmp2.txt
 LC_CTYPE=C LANG=C sed -i.bak $'s/ and Borough//g' tmp2.txt
 LC_CTYPE=C LANG=C sed -i.bak $'s/ Borough//g' tmp2.txt
 cp tmp2.txt countyAdjClean.txt
-## change encoding of some non-English characters like Doña Ana County, NM, doing it by hand in vim:
-### s/Do?a/Dona/gc
 ```
 
 
@@ -224,12 +222,12 @@ usaCountiesPopCentroids$COUNTYFIPS<-with(usaCountiesPopCentroids,ifelse(COUNTYFP
 usaCountiesGeoCentroids<-read.dbf("gis/AddCombiFips/USACountyCentroids.dbf",as.is=TRUE)
 
 tmp<-t(sapply(split(usaCountiesGeoCentroids,usaCountiesGeoCentroids$COMBIFIPS),function(dat){
-				     sapply(dat,function(x){
-					      if(is.character(x)){
-						return(unique(x))
-					      } else {
-						return(mean(x))
-					      }})}))
+		sapply(dat,function(x){
+			 if(is.character(x)){
+			   return(unique(x))
+			 } else {
+			   return(mean(x))
+									}})}))
 
 usaCountiesGeoCentroidsAvg<-as.data.frame(tmp,stringsAsFactors=FALSE)
 usaCountiesGeoCentroidsAvg$CENTRDLON<-as.numeric(usaCountiesGeoCentroidsAvg$CENTRDLON)
@@ -275,11 +273,11 @@ blahdat<-blahdat[order(blahdat$county,blahdat$POPULATION,decreasing=TRUE),]
 ## The county FIPS codes are (from the TR-65 FIPS Code Chart)
 
 bad<-with(tmpdat,{(county=="Richmond"  & state=="VA" & COUNTYFP!="159")  |
-	          (county=="Bedford"   & state=="VA" & COUNTYFP!="019") |
-	          (county=="Fairfax"   & state=="VA" & COUNTYFP!="059") |
-	          (county=="Roanoke"   & state=="VA" & COUNTYFP!="161")|
-	          (county=="Franklin"  & state=="VA" & COUNTYFP!="067") |
-	          (county=="Baltimore" & state=="MD" & COUNTYFP!="005")})
+	  (county=="Bedford"   & state=="VA" & COUNTYFP!="019") |
+	  (county=="Fairfax"   & state=="VA" & COUNTYFP!="059") |
+	  (county=="Roanoke"   & state=="VA" & COUNTYFP!="161")|
+	  (county=="Franklin"  & state=="VA" & COUNTYFP!="067") |
+	  (county=="Baltimore" & state=="MD" & COUNTYFP!="005")})
 
 tmpdat<-tmpdat[!bad,]
 stopifnot(all(table(tmpdat$ids)==1))
@@ -308,14 +306,14 @@ stateCountyFarmDist<-tapply(tmpdat$n,tmpdat$state,function(x){ quantile(x,c(0,.0
 datList<-lapply(split(tmpdat,tmpdat$state),function(dat){
 		  qs<-quantile(dat$n,c(.01,.99))
 		  return(dat[dat$n >= qs[[1]] & dat$n <= qs[[2]],])
-		  })
+	  })
 
 sapply(datList,nrow)
 sum(sapply(datList,nrow))
 
 wrkdat<-do.call("rbind",datList)
-## Exclude delaware
-wrkdat<-wrkdat[wrkdat$state!="DE",]
+## Exclude delaware, rhode island, and hawaii as having too few counties and people.
+wrkdat<-wrkdat[!(wrkdat$state %in% c("DE","RI","HI")),]
 
 row.names(wrkdat)<-wrkdat$combifips
 
@@ -340,7 +338,7 @@ Make an adjacency matrix of the counties:
 
 adjList<-lapply(wrkdat$combifips,function(x){
 		  wrkdat$combifips %in% adjacentCountiesFIPS[[x]]
-	       })
+	  })
 names(adjList)<-wrkdat$combifips
 
 adjMat<-do.call("rbind",adjList)
@@ -376,12 +374,13 @@ adjacentCountiesFIPS[names(asymCounties)]
 
 adjMat[names(asymCounties),names(asymCounties)]<-as.numeric(
 							    (adjMat[names(asymCounties),names(asymCounties)]+
-							      t(adjMat[names(asymCounties),names(asymCounties)]))>0
-							    )
+							     t(adjMat[names(asymCounties),names(asymCounties)]))>0
+							   )
 stopifnot(isSymmetric(adjMat))
 
 ```
 
+Make a matrix recording absolute differences in number of farmers between all pairs of counties.
 
 ```{r}
 scalarDist<-function(var,scalefactor=1){
@@ -389,36 +388,25 @@ scalarDist<-function(var,scalefactor=1){
   ## Scalefactor helps us turn fractions into integers since nbpMatching needs
   ## integers
   outer(var,var,FUN=function(x,y){
-    as.integer(abs(x-y)*scalefactor)
-  })
+	  as.integer(abs(x-y)*scalefactor)
+							   })
 }
-
 
 
 ## Create distance matrix for differences in number of farmers
 numfarmers<-wrkdat$n
 names(numfarmers)<-row.names(wrkdat)
 sizeDist<-scalarDist(numfarmers)
-## Get the fips codes by state so that we can do state-by-state matching
-fipsByState<-split(wrkdat$combifips,wrkdat$state)
+## This will be an ingredient in the penalty that, we hope, forces pairs that are not adjacent but yet which are similar in terms of size and within the same state into pairs.
+maxSizeDist<-max(as.vector(sizeDist))
 
-blah<-sapply(fipsByState,function(fips){ isSymmetric(adjMat[fips,fips]) })
+```
 
-mnfips<-fipsByState[["MN"]]
-
-mnList<-lapply(mnfips,function(x){
-		  mnfips %in% adjacentCountiesFIPS[[x]]
-	       })
-names(mnList)<-mnfips
-mnMat<-do.call("rbind",mnList)
-print(isSymmetric(mnMat))
-
-
+```{r}
 
 getStatePairs<-function(fips){
   adjD<-adjMat[fips,fips]
   sizeD<-sizeDist[fips,fips]
-  maxSizeDist<-max(as.vector(sizeD))
   penMat<- sizeD + adjD*maxSizeDist   ## add the maximum distance to any entry where two counties are adjacent
   if( (nrow(penMat) %% 2)!=0){
     penMat <- make.phantoms(penMat,1) ## delete one county where we have an odd number --- it will be the county least like the others, greatest distance on size and adjacency.
@@ -431,10 +419,14 @@ getStatePairs<-function(fips){
   return(thepairsA)
 }
 
+## Get the fips codes by state so that we can do state-by-state matching
+fipsByState<-split(wrkdat$combifips,wrkdat$state)
 
-## This is inelegant but intelligible and not slow
-pairsByState<-lapply(fipsByState[grep("MN",names(fipsByState),invert=TRUE)],function(fips){
-		       getStatePairs(fips)})
+## This is inelegant but intelligible and not slow because the matching problems are small in each state
+pairsByState<-lapply(fipsByState,function(fips){ getStatePairs(fips)})
+
+## An example of the output. Each county has a categorical variable (a character var) with a label for the pair it is in.
+str(pairsByState[1:2])
 
 ## Because some states have an odd number of counties, one is excluded.
 sum(sapply(pairsByState,length))
@@ -444,14 +436,20 @@ table(wrkdat$state)
 sum(table(wrkdat$state))
 nrow(wrkdat)
 
+## Add the pair variable to the data
 for(i in 1:length(pairsByState)){
   wrkdat[names(pairsByState[[i]]),"pm1"]<-pairsByState[[i]]
 }
 
+## For all non-missing values of the paired variable, we should have exactly 2 unique values.
 stopifnot(all(table(wrkdat$pm1)==2))
 ```
 
-How well did the matching do? Here are descriptives of the pairs.
+How well did the matching do? Here are descriptives of the pairs in terms of
+size and adjacency. We have one pair that is adjacent, so we will avoid it.
+Also, since we did not ask the algorithmn to exclude bad matches, we have some
+pairs that are very different in number of farmers. We will also avoid them
+when choosing the one (or a few more) pairs for the design.
 
 ```{r}
 pairedDat<-wrkdat[!is.na(wrkdat$pm1),]
@@ -459,16 +457,35 @@ pairDiffsN<-with(pairedDat,tapply(n,pm1,function(x){ abs(diff(x)) }) )
 summary(pairDiffsN)
 quantile(pairDiffsN,seq(0,1,.1))
 
+pairDiffsAdj<-with(pairedDat,tapply(combifips,pm1,function(x){ all(as.vector(adjMat[x,x]==0)) }))
+table(pairDiffsAdj)
 ```
 
-## Choose best pair among the matches within each state restrict to not adjacent
+## Choose best pair within each state
+
+
+
+
 
 ```{r}
 
-pairDiffsByState<-lapply(split(pairedDat,pairedDat$state),
-		   function(dat){
-		     with(dat,sort(tapply(n,pm1,function(x){ abs(diff(x)) })) )
-		   })
+pairsByState<-sapply(split(pairedDat$pm1,pairedDat$state),unique) ## otherwise we'll have two entries for each pair
+
+pairAvgN<-with(pairedDat,tapply(n,pm1,mean))
+
+chooseBestPair<-function(pm){
+  ## Given a vector of pair match labels, choose the best pair (closest match in size that is not adjacent with largest sample)
+  okpairs<-names(pairDiffsN[pm][pairDiffsAdj[pm]]) ## exclude adjacent pairs
+  sizeDiffs<-pairDiffsN[okpairs]
+  avgN<-pairAvgN[okpairs]
+  bestpairs<-sizeDiffs[sizeDiffs==min(sizeDiffs)] ## select closest matched pairs
+  thebestpair<-bestpairs[avgN[names(bestpairs)]==max(avgN[names(bestpairs)])] ## among closest matches, choose max N
+  return(names(thebestpair))
+}
+
+
+set.seed(20160101)
+sampledPair<-lapply(pairsByState,function(pm){ message(pm[1]); chooseBestPair(pm) })
 
 
 ```
