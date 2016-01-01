@@ -314,6 +314,9 @@ sapply(datList,nrow)
 sum(sapply(datList,nrow))
 
 wrkdat<-do.call("rbind",datList)
+## Exclude delaware
+wrkdat<-wrkdat[wrkdat$state!="DE",]
+
 row.names(wrkdat)<-wrkdat$combifips
 
 ```
@@ -324,17 +327,11 @@ The input to the pairing function is a matrix of distances. So first we make dis
 
 ```{r setuppairs}
 library(nbpMatching)
+```
 
-scalarDist<-function(var,scalefactor=1){
-  ## Utility function to make n x n abs dist matrices
-  ## Scalefactor helps us turn fractions into integers since nbpMatching needs
-  ## integers
-  outer(var,var,FUN=function(x,y){
-    as.integer(abs(x-y)*scalefactor)
-  })
-}
+Make an adjacency matrix of the counties:
 
-
+```{r adjmat}
 ## Make a matrix with 1 indicating that two counties are touching and 0 otherwise.
 #### Not all counties in the adjacency matrix are represented in the working data from the USDA
 #### blah<-sapply(centerCountiesFIPS2,function(x){
@@ -351,16 +348,51 @@ stopifnot(all(diag(adjMat))) ## all diagonals should be true
 adjMat<-adjMat*1 # convert to numbers
 dimnames(adjMat)<-list(wrkdat$combifips,wrkdat$combifips)
 diag(adjMat)<-0 ## set self-distances to zero for ease in penalty creation below
-wrkdat[which(rowMeans(adjMat)==0 ),] ## which counties have to adjacent counties (Honolulu and Maui in Hawaii)
+wrkdat[which(rowMeans(adjMat)==0 ),] ## which counties have no adjacent counties (Honolulu and Maui in Hawaii)
+
+
+## Some counties in Minnesota are causing a problem with the adjacency matrix which should be symmetric
+## That is, for example, county 27005 is counted as being adjacent to county 27153 but 27153 is not recorded as being adjacent to county 27005. Since adjacency is a symmetric property (by definition here) I need to fix this.
+problemCountiesBig<-colSums(adjMat)!=rowSums(adjMat)
+asymCounties<-problemCountiesBig[problemCountiesBig]
+
+asymAdjMat<-adjMat[names(asymCounties),names(asymCounties)]
+cbind(colSums(asymAdjMat),rowSums(asymAdjMat))
+
+adjacentCountiesFIPS[names(asymCounties)]
+## wrkdat[names(asymCounties),]
+
+## Just to check: These counties are not in some strange geographic situation.
+###  with(wrkdat[wrkdat$state=='MN',],plot(CENTRDLAT,CENTRDLON,pch=1))
+###  with(wrkdat[names(asymCounties),],points(CENTRDLAT,CENTRDLON,pch=19,col="red"))
+
+## Fix the matrix: if any county is called adjacent to another county, make
+## sure that this is reflected in both counties.
+
+stopifnot(isSymmetric(adjMat))
+
+
+
+
+```
+
+
+```{r}
+scalarDist<-function(var,scalefactor=1){
+  ## Utility function to make n x n abs dist matrices
+  ## Scalefactor helps us turn fractions into integers since nbpMatching needs
+  ## integers
+  outer(var,var,FUN=function(x,y){
+    as.integer(abs(x-y)*scalefactor)
+  })
+}
+
+
 
 ## Create distance matrix for differences in number of farmers
 numfarmers<-wrkdat$n
 names(numfarmers)<-row.names(wrkdat)
 sizeDist<-scalarDist(numfarmers)
-
-## Exclude delaware
-wrkdat<-wrkdat[wrkdat$state!="DE",]
-
 ## Get the fips codes by state so that we can do state-by-state matching
 fipsByState<-split(wrkdat$combifips,wrkdat$state)
 
@@ -368,14 +400,13 @@ blah<-sapply(fipsByState,function(fips){ isSymmetric(adjMat[fips,fips]) })
 
 mnfips<-fipsByState[["MN"]]
 
-for(i in 1:length(mnfips)){
-mnList<-lapply(mnfips[-i],function(x){
-		  mnfips[-i] %in% adjacentCountiesFIPS[[x]]
+mnList<-lapply(mnfips,function(x){
+		  mnfips %in% adjacentCountiesFIPS[[x]]
 	       })
-names(mnList)<-mnfips[-i]
+names(mnList)<-mnfips
 mnMat<-do.call("rbind",mnList)
 print(isSymmetric(mnMat))
-}
+
 
 
 getStatePairs<-function(fips){
