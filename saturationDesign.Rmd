@@ -366,13 +366,19 @@ adjacentCountiesFIPS[names(asymCounties)]
 ###  with(wrkdat[wrkdat$state=='MN',],plot(CENTRDLAT,CENTRDLON,pch=1))
 ###  with(wrkdat[names(asymCounties),],points(CENTRDLAT,CENTRDLON,pch=19,col="red"))
 
-## Fix the matrix: if any county is called adjacent to another county, make
+## Fix the matrix itself: if any county is called adjacent to another county, make
 ## sure that this is reflected in both counties.
 
+## Since the matrix is 0 when two counties are not adjacent and 1 when when
+## they are adjacent, I can add the transpose of the matrix and turn missing 0's
+## into 1's and existing 1's into 2's. So I then convert that submatrix into
+## TRUE/FALSE and then back to 1/0. At least, this is my one line fix
+
+adjMat[names(asymCounties),names(asymCounties)]<-as.numeric(
+							    (adjMat[names(asymCounties),names(asymCounties)]+
+							      t(adjMat[names(asymCounties),names(asymCounties)]))>0
+							    )
 stopifnot(isSymmetric(adjMat))
-
-
-
 
 ```
 
