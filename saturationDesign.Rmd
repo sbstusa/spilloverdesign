@@ -476,23 +476,27 @@ pairsByState<-sapply(split(pairedDat$pm1,pairedDat$state),unique) ## otherwise w
 
 pairAvgN<-with(pairedDat,tapply(n,pm1,mean))
 
-chooseBestPair<-function(pm){
+chooseBestPairs<-function(pm,numpairs){
+  ## pm is a vector of pair-match names
+  ## numpairs is the number of pairs to choose
   ## Given a vector of pair match labels, choose the best pair (closest match in size that is not adjacent with largest sample)
   okpairs<-names(pairDiffsN[pm][pairDiffsAdj[pm]]) ## exclude adjacent pairs
   sizeDiffs<-pairDiffsN[okpairs]
   avgN<-pairAvgN[okpairs]
-  bestpairs<-sizeDiffs[sizeDiffs==min(sizeDiffs)] ## select closest matched pairs
-  thebestpair<-bestpairs[avgN[names(bestpairs)]==max(avgN[names(bestpairs)])] ## among closest matches, choose the one with max N
-  return(names(thebestpair))
+  tmp<-cbind(sizeDiffs,avgN)[order(sizeDiffs,-1*avgN,decreasing=FALSE),] ## sort by diff in size and then by avgN
+  bestpairs<-row.names(tmp)[1:numpairs]
+  return(bestpairs)
 }
 
+numpairs<-3
+selectedPairs<-lapply(pairsByState,function(pm){ chooseBestPairs(pm,numpairs) })
+stopifnot(all(sapply(selectedPairs,length)==numpairs))
 
-set.seed(20160101)
-selectedpair<-lapply(pairsByState,function(pm){ chooseBestPair(pm) })
-stopifnot(all(sapply(selectedpair,length)==1))
-
-tmp<-lapply(names(selectedpair),function(x){
-	      cbind(state=rep(x,2),county=strsplit(selectedpair[[x]],"-")[[1]])
+## Turn the list into a data frame
+tmp<-lapply(names(selectedPairs),function(x){
+	      cbind(state=rep(x,2*numpairs),
+		    county=strsplit(selectedPairs[[x]],"-")[[1]],
+		    pair=rep(selectedPairs[[x]],each=2))
 							   })
 experimentDat<-data.frame(do.call("rbind",tmp),stringsAsFactors = FALSE)
 row.names(experimentDat)<-experimentDat$county
