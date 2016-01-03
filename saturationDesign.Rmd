@@ -456,16 +456,19 @@ pairedDat<-wrkdat[!is.na(wrkdat$pm1),]
 pairDiffsN<-with(pairedDat,tapply(n,pm1,function(x){ abs(diff(x)) }) )
 summary(pairDiffsN)
 quantile(pairDiffsN,seq(0,1,.1))
+```
 
+
+How many pairs involve adjacent counties?
+
+```{r}
 pairDiffsAdj<-with(pairedDat,tapply(combifips,pm1,function(x){ all(as.vector(adjMat[x,x]==0)) }))
 table(pairDiffsAdj)
 ```
 
-## Choose best pair within each state
+## Choose best pairs within each state
 
-
-
-
+We want roughly 3 pairs within each state.
 
 ```{r}
 
@@ -479,20 +482,53 @@ chooseBestPair<-function(pm){
   sizeDiffs<-pairDiffsN[okpairs]
   avgN<-pairAvgN[okpairs]
   bestpairs<-sizeDiffs[sizeDiffs==min(sizeDiffs)] ## select closest matched pairs
-  thebestpair<-bestpairs[avgN[names(bestpairs)]==max(avgN[names(bestpairs)])] ## among closest matches, choose max N
+  thebestpair<-bestpairs[avgN[names(bestpairs)]==max(avgN[names(bestpairs)])] ## among closest matches, choose the one with max N
   return(names(thebestpair))
 }
 
 
 set.seed(20160101)
-sampledPair<-lapply(pairsByState,function(pm){ message(pm[1]); chooseBestPair(pm) })
+selectedpair<-lapply(pairsByState,function(pm){ chooseBestPair(pm) })
+stopifnot(all(sapply(selectedpair,length)==1))
 
+tmp<-lapply(names(selectedpair),function(x){
+	      cbind(state=rep(x,2),county=strsplit(selectedpair[[x]],"-")[[1]])
+							   })
+experimentDat<-data.frame(do.call("rbind",tmp),stringsAsFactors = FALSE)
+row.names(experimentDat)<-experimentDat$county
+experimentDat$n<-pairedDat[row.names(experimentDat),"n"]
 
 ```
 
 ## Assign one county to possible treatment within each pair.
 
+```{r}
+set.seed(20150101)
+experimentDat$Z<-unsplit(lapply(split(experimentDat$county,experimentDat$state),function(x){ sample(c(0,1)) }),experimentDat$state)
+
+stopifnot(all(tapply(experimentDat$Z,experimentDat$state,sum)==1))
+
+```
+
+An attempt at a map of our counties. Black are those counties assigned treatment.
+```{r}
+library(maps)
+data(countyMapEnv)
+data(usaMapEnv)
+data(county.fips)
+map('state',regions=states$State[states$Postal.Code %in% experimentDat$state],exact=FALSE)
+map("county",regions=county.fips$polyname[county.fips$fips %in% experimentDat$county],add=TRUE)
+map("county",regions=county.fips$polyname[county.fips$fips %in% experimentDat$county[experimentDat$Z==1]],fill=TRUE,add=TRUE)
+```
+
 ## Calculate the number of treatment assignments.
+
+```{r}
+
+sum(experimentDat$n[experimentDat$Z==1])
+
+
+```
 
 
 # References
