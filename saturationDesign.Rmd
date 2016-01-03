@@ -218,7 +218,7 @@ usaCountiesPopCentroids$COUNTYFIPS<-with(usaCountiesPopCentroids,ifelse(COUNTYFP
 									ifelse(COUNTYFP<100,paste("0",COUNTYFP,sep=""),
 									       as.character(COUNTYFP))))
 
-
+library(foreign)
 usaCountiesGeoCentroids<-read.dbf("gis/AddCombiFips/USACountyCentroids.dbf",as.is=TRUE)
 
 tmp<-t(sapply(split(usaCountiesGeoCentroids,usaCountiesGeoCentroids$COMBIFIPS),function(dat){
@@ -484,55 +484,61 @@ chooseBestPairs<-function(pm,numpairs){
   sizeDiffs<-pairDiffsN[okpairs]
   avgN<-pairAvgN[okpairs]
   tmp<-cbind(sizeDiffs,avgN)[order(sizeDiffs,-1*avgN,decreasing=FALSE),] ## sort by diff in size and then by avgN
+  if(length(pm) < numpairs){ numpairs<-length(pm) } ## can't choose more than total number of pairs
   bestpairs<-row.names(tmp)[1:numpairs]
   return(bestpairs)
 }
 
-numpairs<-3
+numpairs<-5
 selectedPairs<-lapply(pairsByState,function(pm){ chooseBestPairs(pm,numpairs) })
-stopifnot(all(sapply(selectedPairs,length)==numpairs))
 
 ## Turn the list into a data frame
 tmp<-lapply(names(selectedPairs),function(x){
+	      ## message(x)
+	      if(length(selectedPairs[[x]])<numpairs){ numpairs<-length(selectedPairs[[x]]) }
 	      cbind(state=rep(x,2*numpairs),
-		    county=strsplit(selectedPairs[[x]],"-")[[1]],
-		    pair=rep(selectedPairs[[x]],each=2))
+		    pair=rep(selectedPairs[[x]],each=2),
+		    county=unlist(strsplit(selectedPairs[[x]],"-")))
 							   })
 experimentDat<-data.frame(do.call("rbind",tmp),stringsAsFactors = FALSE)
 row.names(experimentDat)<-experimentDat$county
 experimentDat$n<-pairedDat[row.names(experimentDat),"n"]
-
+experimentDat[1:10,]
 ```
 
 ## Assign one county to possible treatment within each pair.
 
 ```{r}
 set.seed(20150101)
-experimentDat$Z<-unsplit(lapply(split(experimentDat$county,experimentDat$state),function(x){ sample(c(0,1)) }),experimentDat$state)
+experimentDat$Z<-unsplit(lapply(split(experimentDat$county,experimentDat$pair),function(x){ sample(c(0,1)) }),experimentDat$pair)
+experimentDat[1:10,]
 
-stopifnot(all(tapply(experimentDat$Z,experimentDat$state,sum)==1))
+stopifnot(all(tapply(experimentDat$Z,experimentDat$pair,sum)==1)) ## exactly 1 treated county per pair
 
 ```
 
-An attempt at a map of our counties. Black are those counties assigned treatment.
-```{r}
+An attempt at a map of our counties. Black are those counties assigned treatment. I think that this is very useful since we may want to go back and refine the algorithm a bit.
+
+```{r map}
 library(maps)
 data(countyMapEnv)
 data(usaMapEnv)
 data(county.fips)
 map('state',regions=states$State[states$Postal.Code %in% experimentDat$state],exact=FALSE)
-map("county",regions=county.fips$polyname[county.fips$fips %in% experimentDat$county],add=TRUE)
-map("county",regions=county.fips$polyname[county.fips$fips %in% experimentDat$county[experimentDat$Z==1]],fill=TRUE,add=TRUE)
+map("county",regions=county.fips$polyname[county.fips$fips %in% as.numeric(experimentDat$county)],add=TRUE)
+map("county",regions=county.fips$polyname[county.fips$fips %in% as.numeric(experimentDat$county)[experimentDat$Z==1]],col="gray",fill=TRUE,add=TRUE)
 ```
 
 ## Calculate the number of treatment assignments.
 
 ```{r}
-
 sum(experimentDat$n[experimentDat$Z==1])
-
-
 ```
 
+## Save the file for use later
+
+```{r}
+write.csv(experimentDat,file="experimentDat.csv")
+```
 
 # References
