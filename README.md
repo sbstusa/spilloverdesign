@@ -1,5 +1,8 @@
 # spilloverdesign
-A repository with code to produce and evaluate experimental designs to estimate causal effects in the presence of spillovers.
+
+A repository with code to produce and evaluate experimental designs to estimate causal effects in the presence of spillovers. The two files here have slightly different pre-requisites.
+
+# Two Level Randomization Notes File.
 
 ## Setup
 
@@ -7,7 +10,6 @@ To get this code you can either
 [clone](https://help.github.com/articles/cloning-a-repository/) this repository
 to your computer or download a zip file of the repository using one of the
 buttons on the github website screen.
-
 
 The code here relies on a pre-release version of RItools
 <https://github.com/markmfredrickson/RItools>. Because it is not on CRAN it
@@ -37,6 +39,21 @@ And then you can use the `render` function:
 render("twolevelrand.Rmd") ## for an html document
 render("twolevelrand.Rmd",output_format=pdf_document())
 
+```
+
+# The Saturation Design File
+
+This file relies on the `googlesheets` library and, in turn, the first time you use this library, it wants to enable you to authenticate in Google, so you must render the file in interactive mode. The following should install the required packages.
+
+```
+install.packages(c("googlesheets","nbpMatching","maps"))
+```
+
+Then you can create the `experimentDat.csv` file and the `saturationDesign.html` file using the following commands (if you have SBST access to the Google Data Files).
+
+```
+library(rmarkdown)
+render("saturationDesign.Rmd")
 ```
 
 
