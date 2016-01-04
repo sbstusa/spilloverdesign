@@ -535,8 +535,20 @@ dev.off()
 
 ## Calculate the number of treatment assignments.
 
+If we have 50% of farmers assigned to treatment within each potential-to-be-treated county, then we have the following total number of letters.
+
 ```{r}
-sum(experimentDat$n[experimentDat$Z==1])
+proportionTreated <- 1/2
+
+sum(experimentDat$n[experimentDat$Z==1] * proportionTreated)
+```
+
+More generally, here are some of the total numbers from different choices of proportion treated.
+
+```{r}
+totalTreated<-sapply(seq(.5,.75,.05),function(x){ sum(experimentDat$n[experimentDat$Z==1] * x) })
+rbind(totalTreated,seq(.5,.75,.05))
+
 ```
 
 ## Save the file for use later

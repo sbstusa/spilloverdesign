@@ -10,7 +10,7 @@
 
 <meta name="author" content="Jake Bowers" />
 
-<meta name="date" content="2016-01-03" />
+<meta name="date" content="2016-01-04" />
 
 <title>Notes on a Randomized Saturation Design</title>
 
@@ -64,7 +64,7 @@ img {
 <div id="header">
 <h1 class="title">Notes on a Randomized Saturation Design</h1>
 <h4 class="author"><em>Jake Bowers</em></h4>
-<h4 class="date"><em>January 03, 2016</em></h4>
+<h4 class="date"><em>January 04, 2016</em></h4>
 </div>
 
 
@@ -695,8 +695,17 @@ dev.off()</code></pre>
 </div>
 <div id="calculate-the-number-of-treatment-assignments." class="section level2">
 <h2>Calculate the number of treatment assignments.</h2>
-<pre class="r"><code>sum(experimentDat$n[experimentDat$Z==1])</code></pre>
-<pre><code>[1] 153006</code></pre>
+<p>If we have 50% of farmers assigned to treatment within each potential-to-be-treated county, then we have the following total number of letters.</p>
+<pre class="r"><code>proportionTreated &lt;- 1/2
+
+sum(experimentDat$n[experimentDat$Z==1] * proportionTreated)</code></pre>
+<pre><code>[1] 76503</code></pre>
+<p>More generally, here are some of the total numbers from different choices of proportion treated.</p>
+<pre class="r"><code>totalTreated&lt;-sapply(seq(.5,.75,.05),function(x){ sum(experimentDat$n[experimentDat$Z==1] * x) })
+rbind(totalTreated,seq(.5,.75,.05))</code></pre>
+<pre><code>                [,1]     [,2]    [,3]     [,4]     [,5]      [,6]
+totalTreated 76503.0 84153.30 91803.6 99453.90 107104.2 114754.50
+                 0.5     0.55     0.6     0.65      0.7      0.75</code></pre>
 </div>
 <div id="save-the-file-for-use-later" class="section level2">
 <h2>Save the file for use later</h2>
