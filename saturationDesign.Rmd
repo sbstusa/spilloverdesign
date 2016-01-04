@@ -11,9 +11,10 @@ mainfont: "Minion Pro"
 output:
   html_document:
     graphics: yes
-    fig_caption: yes
+    fig_caption: true
     fig_height: 4
     fig_width: 4
+    keep_md: true
   pdf_document:
     latex_engine: xelatex
     graphics: yes
@@ -23,7 +24,6 @@ output:
   word_document:
     fig_height: 3
     fig_width: 5
-
 ---
 
 
@@ -43,7 +43,6 @@ opts_chunk$set(
 	       echo=TRUE,
 	       results='markup',
 	       strip.white=TRUE,
-	       fig.path='figs/fig',
 	       cache=FALSE,
 	       highlight=TRUE,
 	       width.cutoff=132,
@@ -519,15 +518,20 @@ stopifnot(all(tapply(experimentDat$Z,experimentDat$pair,sum)==1)) ## exactly 1 t
 
 An attempt at a map of our counties. Black are those counties assigned treatment. I think that this is very useful since we may want to go back and refine the algorithm a bit.
 
-```{r map}
+```{r map, fig.show='asis',fig.keep='high'}
+png(file="map.png",width=1280,height=800)
+par(oma=rep(0,4))
 library(maps)
 data(countyMapEnv)
 data(usaMapEnv)
 data(county.fips)
-map('state',regions=states$State[states$Postal.Code %in% experimentDat$state],exact=FALSE)
+map('state',regions=states$State[states$Postal.Code %in% experimentDat$state],exact=FALSE,mar=c(1,1,1,1))
 map("county",regions=county.fips$polyname[county.fips$fips %in% as.numeric(experimentDat$county)],add=TRUE)
 map("county",regions=county.fips$polyname[county.fips$fips %in% as.numeric(experimentDat$county)[experimentDat$Z==1]],col="gray",fill=TRUE,add=TRUE)
+dev.off()
 ```
+
+![A Map](map.png)
 
 ## Calculate the number of treatment assignments.
 
