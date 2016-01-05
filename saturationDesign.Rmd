@@ -297,10 +297,11 @@ Remove counties with no geographic information:
 tmpdat<-tmpdat[!is.na(tmpdat$LATITUDE),]
 ```
 
-Also trim the top and bottom 1 percent of counties (in terms of size)
+Also trim the top and bottom 1 percent of counties (in terms of size) within each county.
 
 ```{r}
 stateCountyFarmDist<-tapply(tmpdat$n,tmpdat$state,function(x){ quantile(x,c(0,.01,.1,.25,.5,.75,.9,.99,1)) })
+table(tmpdat$state)
 
 datList<-lapply(split(tmpdat,tmpdat$state),function(dat){
 		  qs<-quantile(dat$n,c(.01,.99))
@@ -467,29 +468,75 @@ table(pairDiffsAdj)
 
 ## Choose best pairs within each state
 
-We want roughly 3 pairs within each state.
+We want to assign about 1/4 of the counties in each state to treatment. If this
+seems like too much, we might decide to assign, say, 6 counties to treatment or
+1/4 of the total counties, whichever is greater.
 
-```{r}
+```{r choosepairs}
 
 pairsByState<-sapply(split(pairedDat$pm1,pairedDat$state),unique) ## otherwise we'll have two entries for each pair
 
 pairAvgN<-with(pairedDat,tapply(n,pm1,mean))
 
+set.seed(20150101)
 chooseBestPairs<-function(pm,numpairs){
   ## pm is a vector of pair-match names
   ## numpairs is the number of pairs to choose
   ## Given a vector of pair match labels, choose the best pair (closest match in size that is not adjacent with largest sample)
-  okpairs<-names(pairDiffsN[pm][pairDiffsAdj[pm]]) ## exclude adjacent pairs
+  okpairs<-names(pairDiffsN[pm][pairDiffsAdj[pm]]) ## exclude pairs where the two counties are adjacent
   sizeDiffs<-pairDiffsN[okpairs]
   avgN<-pairAvgN[okpairs]
-  tmp<-cbind(sizeDiffs,avgN)[order(sizeDiffs,-1*avgN,decreasing=FALSE),] ## sort by diff in size and then by avgN
-  if(length(pm) < numpairs){ numpairs<-length(pm) } ## can't choose more than total number of pairs
-  bestpairs<-row.names(tmp)[1:numpairs]
-  return(bestpairs)
+  ## tmp<-cbind(sizeDiffs,avgN)[order(sizeDiffs,-1*avgN,decreasing=FALSE),] ## sort by diff in size and then by avgN
+  tmp<-cbind(sizeDiffs,avgN,sizeDiffs/avgN)[order(sizeDiffs/avgN,-1*avgN,decreasing=FALSE),] ## sort by diff in size/avgN and then by avgN
+
+  nAvail<-numpairs
+  nFarmers<-0
+  newtmp<-tmp
+
+  #####loop starts
+  pair1<-strsplit(row.names(newtmp)[1],"-")[[1]]
+  names(pair1)<-rep(row.names(newtmp)[1],2)
+  pair1Z<-sample(c(0,1)) ## assign one county to treatment
+  nFarmers1<-pairedDat[pair1[pair1Z==1],"n"]/2
+  nFarmers<-nFarmers1+nFarmers
+  remainingPairs<-row.names(newtmp)[!(row.names(newtmp) %in% names(pair1)[1])]
+  adjM<-adjMat[pair1[pair1Z==0],
+	       unlist(strsplit(remainingPairs,"-"))]
+  adjCounties<-names(adjM)[adjM==1]
+  adjCountiesLocs<-sapply(c(pair1[1],adjCounties),function(cnty){ grep(cnty,row.names(tmp)) })
+  includeCounties<-row.names(newtmp)[-c(adjCountiesLocs)]
+  newtmp<-newtmp[includeCounties,]
+  
+
+
+  nAvail <- max(nrows(tmp[-1,]),numpairs)
+  chosenPairs<-vector(length=numpairs)
+  chosenPairs[1,]<-pair1
+  while(nAvail>0){
+    ## choose next pair keeping the control county in the first pair isolated (within state only, this doesn't control cross state adjacency
+  adjM<-adjMat[pair1[pair1Z==0],
+	       unlist(strsplit(row.names(tmp)[!(row.names(tmp) %in% chosenPairs),"-"))]
+  adjCounties<-names(adjM)[adjM==1]
+
+  badpairs<-sapply(adjCounties,function(cnty){ grep(cnty,row.names(tmp)) })
+  tmp2<-tmp[-c(1,badpairs),]
+  pair2<-strsplit(row.names(tmp2)[1],"-")[[1]]
+  pair2Z<-sample(c(0,1))
+  n2<-pairedDat[pair2[pair2Z==1],"n"]/2
+  nAvail<-nAvail-1
+  }
+
+
+  pair1s<-row.names(tmp)[1:numpairs]
+  return(pair1s)
 }
 
-numpairs<-5
-selectedPairs<-lapply(pairsByState,function(pm){ chooseBestPairs(pm,numpairs) })
+##maxnumpairs<-5
+selectedPairs<-lapply(names(pairsByState),function(nm){
+			nm<-names(pairsByState)[[1]]
+			numpairs<- floor(length(pairsByState[[nm]])/2) ## no more than 1/4 of the counties in a state in treatment
+			chooseBestPairs(pairsByState[[nm]],numpairs) 
+							   })
 
 ## Turn the list into a data frame
 tmp<-lapply(names(selectedPairs),function(x){
