@@ -15,12 +15,14 @@ output:
     fig_height: 4
     fig_width: 4
     keep_md: true
+    toc: true
   pdf_document:
     latex_engine: xelatex
     graphics: yes
     fig_caption: yes
     fig_height: 4
     fig_width: 4
+    toc: true
   word_document:
     fig_height: 3
     fig_width: 5
@@ -31,10 +33,11 @@ output:
 # Some customization.  You can alter or delete as desired (if you know what you are doing).
 # knitr settings to control how R chunks work.
 
-## To make the html file do
-## render("exploration4.Rmd",output_format=html_document(fig_retina=FALSE))
+## To make the html file within the R console do
+## render("saturationDesign.Rmd",output_format=html_document(fig_retina=FALSE))
 ## To make the pdf file do
-## render("exploration4.Rmd",output_format=pdf_document())
+## render("saturationDesign.Rmd",output_format=pdf_document())
+## Or at the unix command line: Rscript -e "library(rmarkdown); render('saturationDesign.Rmd')"
 
 require(knitr)
 opts_chunk$set(
@@ -478,69 +481,99 @@ pairsByState<-sapply(split(pairedDat$pm1,pairedDat$state),unique) ## otherwise w
 
 pairAvgN<-with(pairedDat,tapply(n,pm1,mean))
 
-set.seed(20150101)
 chooseBestPairs<-function(pm,numpairs){
   ## pm is a vector of pair-match names
   ## numpairs is the number of pairs to choose
   ## Given a vector of pair match labels, choose the best pair (closest match in size that is not adjacent with largest sample)
+
+  ### First, exclude pairs where the two counties are adjacent (should be very rare given our pairing algorithm)
   okpairs<-names(pairDiffsN[pm][pairDiffsAdj[pm]]) ## exclude pairs where the two counties are adjacent
   sizeDiffs<-pairDiffsN[okpairs]
   avgN<-pairAvgN[okpairs]
-  ## tmp<-cbind(sizeDiffs,avgN)[order(sizeDiffs,-1*avgN,decreasing=FALSE),] ## sort by diff in size and then by avgN
-  tmp<-cbind(sizeDiffs,avgN,sizeDiffs/avgN)[order(sizeDiffs/avgN,-1*avgN,decreasing=FALSE),] ## sort by diff in size/avgN and then by avgN
+
+  ### Second, sort the pairs by size difference as a proportion of average size of a county within in the pair.
+
+  ### The idea here is that a 1000-900 pair is better than a 10-9 pair even
+  ### though the size difference is 100 in the first place and only 1 in the second
+  ### place.
+
+  ## pairsInOrder<-cbind(sizeDiffs,avgN)[order(sizeDiffs,-1*avgN,decreasing=FALSE),] ## sort by diff in size and then by avgN
+  pairsInOrder<-cbind(sizeDiffs,avgN,sizeDiffs/avgN)[order(sizeDiffs/avgN,-1*avgN,decreasing=FALSE),] ## sort by diff in size/avgN and then by avgN
+
+  ### Third, start choosing pairs in order from best to worst, requiring that already chosen counties not be adjacent to any other counties subsequantly chosen
+
+  ## Decided not to focus on control-only adjacency since then the pairs are no
+  ## longer fixed, pre-treatment features, but depend on the preceding ##
+  ## randomizations. So, it would then be difficult to look for heterogeneous
+  ## effects by type of pair (big counties, small counties, etc..)
 
   nAvail<-numpairs
-  nFarmers<-0
-  newtmp<-tmp
-
-  res<-vector(mode="list",length=nrow(tmp))
+  ##nFarmers<-0
+  newpairsInOrder<-pairsInOrder
+  res<-list() ## very inefficient but clear and clean versus res<-vector(mode="list",length=nrow(pairsInOrder))
   k<-0
-  #####loop starts
   while(nAvail > 0 & nAvail <= numpairs){
     k<-k+1
-    pair1<-strsplit(row.names(newtmp)[1],"-")[[1]]
-    names(pair1)<-rep(row.names(newtmp)[1],2)
-    pair1Z<-sample(c(0,1)) ## assign one county to treatment
-    names(pair1)<-rep(row.names(newtmp)[1],2)
-    res[[k]]<-data.frame(county=pair1,Z=pair1Z,pair=names(pair1))
+    ## message(k)
 
-    remainingPairs<-row.names(newtmp)[!(row.names(newtmp) %in% names(pair1)[1])]
-    adjM<-adjMat[pair1[pair1Z==0],
-		 unlist(strsplit(remainingPairs,"-"))]
-    adjCounties<-names(adjM)[adjM==1]
-    adjCountiesLocs<-sapply(c(pair1[1],adjCounties),function(cnty){ grep(cnty,row.names(tmp)) })
-    includeCounties<-row.names(newtmp)[-c(adjCountiesLocs)]
+    #### Choose the pair that is on top of the list, the best one according to our criteria above
+    pair1<-strsplit(row.names(newpairsInOrder)[1],"-")[[1]]
+    names(pair1)<-rep(row.names(newpairsInOrder)[1],2)
+    ## pair1Z<-sample(c(0,1)) ## assign one county to treatment
+    names(pair1)<-rep(row.names(newpairsInOrder)[1],2)
+    ## res[[k]]<-data.frame(county=pair1,Z=pair1Z,pair=names(pair1))
+    res[[k]]<-data.frame(county=pair1,pair=names(pair1),stringsAsFactors=FALSE)
+    ##nFarmers1<-pairedDat[pair1[pair1Z==1],"n"]/2
+    ##nFarmers<-nFarmers1+nFarmers
+    ## message(nFarmers)
 
-    newtmp<-newtmp[includeCounties,]
-    nFarmers1<-pairedDat[pair1[pair1Z==1],"n"]/2
-    nFarmers<-nFarmers1+nFarmers
-    nAvail<-min(numpairs,nrow(newtmp))
-    message("Available pairs:",nAvail)
+    #### Trim the pairsInOrder data to exclude the pairs already chosen and any pairs adjacent to the preceding pair.
+    remainingPairs<-row.names(newpairsInOrder)[!(row.names(newpairsInOrder) %in% names(pair1)[1])]
+    if(length(remainingPairs)==0){
+      return(res)
+    } else {
+      ## Find pairs where at least one member is adjacent to one of the pair members and exclude that pair from consideration.
+      ## adjM<-adjMat[pair1,##[pair1Z==0], unlist(strsplit(remainingPairs,"-"))]
+      adjM<-adjMat[pair1,unlist(strsplit(remainingPairs,"-"))]
+      adjCounties<-colnames(adjM)[colSums(adjM)>=1]
+      adjCountiesLocs<-unique(sapply(c(pair1[1],adjCounties),function(cnty){ grep(cnty,row.names(newpairsInOrder)) }))
+      includeCounties<-row.names(newpairsInOrder)[-c(adjCountiesLocs)]
+      if(length(includeCounties)==0){ 
+	return(res)
+      } else {
+	newpairsInOrder<-newpairsInOrder[includeCounties,,drop=FALSE]
+	nAvail<-min(numpairs,nrow(newpairsInOrder))
+	## message("Available pairs:",nAvail)
+      }
+    }
   }
-
-  return(res)
-
 }
 
-##maxnumpairs<-5
-selectedPairs<-lapply(names(pairsByState),function(nm){
-			nm<-names(pairsByState)[[1]]
-			numpairs<- floor(length(pairsByState[[nm]])/2) ## no more than 1/4 of the counties in a state in treatment
-			chooseBestPairs(pairsByState[[nm]],numpairs) 
-							   })
+targetPairsByState<-floor(sapply(pairsByState,length)/2) ## no more than 1/4 of the counties in a state in treatment
 
-## Turn the list into a data frame
-tmp<-lapply(names(selectedPairs),function(x){
-	      ## message(x)
-	      if(length(selectedPairs[[x]])<numpairs){ numpairs<-length(selectedPairs[[x]]) }
-	      cbind(state=rep(x,2*numpairs),
-		    pair=rep(selectedPairs[[x]],each=2),
-		    county=unlist(strsplit(selectedPairs[[x]],"-")))
+selectedPairs<-lapply(names(pairsByState),function(nm){
+			pairList<-chooseBestPairs(pairsByState[[nm]],numpairs=targetPairsByState[[nm]])
+			if(length(pairList)==0){
+			  return(NA)
+			} else {
+			  results<-data.frame(do.call("rbind",pairList),stringsAsFactors=FALSE)
+			  results$state<-nm
+			  return(results)
+			}
 							   })
-experimentDat<-data.frame(do.call("rbind",tmp),stringsAsFactors = FALSE)
+names(selectedPairs)<-names(pairsByState)
+
+
+## How many counties did the algorithm return per state?
+sapply(selectedPairs,function(x){ if(is.data.frame(x)){ return(nrow(x)) } else { return(NA) }})
+
+
+experimentDat<-data.frame(do.call("rbind",selectedPairs),stringsAsFactors = FALSE)
 row.names(experimentDat)<-experimentDat$county
 experimentDat$n<-pairedDat[row.names(experimentDat),"n"]
-experimentDat[1:10,]
+str(experimentDat)
+head(experimentDat)
+summary(experimentDat$n) ## sizes of counties in the experiment
 ```
 
 ## Assign one county to possible treatment within each pair.
@@ -548,7 +581,7 @@ experimentDat[1:10,]
 ```{r}
 set.seed(20150101)
 experimentDat$Z<-unsplit(lapply(split(experimentDat$county,experimentDat$pair),function(x){ sample(c(0,1)) }),experimentDat$pair)
-experimentDat[1:10,]
+head(experimentDat)
 
 stopifnot(all(tapply(experimentDat$Z,experimentDat$pair,sum)==1)) ## exactly 1 treated county per pair
 
@@ -586,6 +619,22 @@ More generally, here are some of the total numbers from different choices of pro
 ```{r}
 totalTreated<-sapply(seq(.5,.75,.05),function(x){ sum(experimentDat$n[experimentDat$Z==1] * x) })
 rbind(totalTreated,seq(.5,.75,.05))
+```
+
+Or we can just solve for the proportion to send out about 150,000 letters
+
+```{r}
+
+fn<-function(x){
+  150000 - sum(experimentDat$n[experimentDat$Z==1] * x)
+}
+
+sol<-uniroot(fn,lower=.1,upper=.6)
+
+sol$root
+
+fn(sol$root)
+sum(experimentDat$n[experimentDat$Z==1] * sol$root)
 
 ```
 
