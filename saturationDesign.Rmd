@@ -493,42 +493,33 @@ chooseBestPairs<-function(pm,numpairs){
   nFarmers<-0
   newtmp<-tmp
 
+  res<-vector(mode="list",length=nrow(tmp))
+  k<-0
   #####loop starts
-  pair1<-strsplit(row.names(newtmp)[1],"-")[[1]]
-  names(pair1)<-rep(row.names(newtmp)[1],2)
-  pair1Z<-sample(c(0,1)) ## assign one county to treatment
-  nFarmers1<-pairedDat[pair1[pair1Z==1],"n"]/2
-  nFarmers<-nFarmers1+nFarmers
-  remainingPairs<-row.names(newtmp)[!(row.names(newtmp) %in% names(pair1)[1])]
-  adjM<-adjMat[pair1[pair1Z==0],
-	       unlist(strsplit(remainingPairs,"-"))]
-  adjCounties<-names(adjM)[adjM==1]
-  adjCountiesLocs<-sapply(c(pair1[1],adjCounties),function(cnty){ grep(cnty,row.names(tmp)) })
-  includeCounties<-row.names(newtmp)[-c(adjCountiesLocs)]
-  newtmp<-newtmp[includeCounties,]
-  
+  while(nAvail > 0 & nAvail <= numpairs){
+    k<-k+1
+    pair1<-strsplit(row.names(newtmp)[1],"-")[[1]]
+    names(pair1)<-rep(row.names(newtmp)[1],2)
+    pair1Z<-sample(c(0,1)) ## assign one county to treatment
+    names(pair1)<-rep(row.names(newtmp)[1],2)
+    res[[k]]<-data.frame(county=pair1,Z=pair1Z,pair=names(pair1))
 
+    remainingPairs<-row.names(newtmp)[!(row.names(newtmp) %in% names(pair1)[1])]
+    adjM<-adjMat[pair1[pair1Z==0],
+		 unlist(strsplit(remainingPairs,"-"))]
+    adjCounties<-names(adjM)[adjM==1]
+    adjCountiesLocs<-sapply(c(pair1[1],adjCounties),function(cnty){ grep(cnty,row.names(tmp)) })
+    includeCounties<-row.names(newtmp)[-c(adjCountiesLocs)]
 
-  nAvail <- max(nrows(tmp[-1,]),numpairs)
-  chosenPairs<-vector(length=numpairs)
-  chosenPairs[1,]<-pair1
-  while(nAvail>0){
-    ## choose next pair keeping the control county in the first pair isolated (within state only, this doesn't control cross state adjacency
-  adjM<-adjMat[pair1[pair1Z==0],
-	       unlist(strsplit(row.names(tmp)[!(row.names(tmp) %in% chosenPairs),"-"))]
-  adjCounties<-names(adjM)[adjM==1]
-
-  badpairs<-sapply(adjCounties,function(cnty){ grep(cnty,row.names(tmp)) })
-  tmp2<-tmp[-c(1,badpairs),]
-  pair2<-strsplit(row.names(tmp2)[1],"-")[[1]]
-  pair2Z<-sample(c(0,1))
-  n2<-pairedDat[pair2[pair2Z==1],"n"]/2
-  nAvail<-nAvail-1
+    newtmp<-newtmp[includeCounties,]
+    nFarmers1<-pairedDat[pair1[pair1Z==1],"n"]/2
+    nFarmers<-nFarmers1+nFarmers
+    nAvail<-min(numpairs,nrow(newtmp))
+    message("Available pairs:",nAvail)
   }
 
+  return(res)
 
-  pair1s<-row.names(tmp)[1:numpairs]
-  return(pair1s)
 }
 
 ##maxnumpairs<-5
