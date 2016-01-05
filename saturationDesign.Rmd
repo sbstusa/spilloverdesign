@@ -481,6 +481,15 @@ pairsByState<-sapply(split(pairedDat$pm1,pairedDat$state),unique) ## otherwise w
 
 pairAvgN<-with(pairedDat,tapply(n,pm1,mean))
 
+
+penalty1 <- function(x1,x2){
+  ## here, x1 and x2 are the vectors of sizes (in numbers of farmers) in each county within a pair
+  ifelse( (x1-x2) != 0,
+    log(x1) + log(x2) - log(abs(x1 - x2)),
+    log(x1) + log(x2) )
+}
+
+
 chooseBestPairs<-function(pm,numpairs){
   ## pm is a vector of pair-match names
   ## numpairs is the number of pairs to choose
@@ -498,7 +507,10 @@ chooseBestPairs<-function(pm,numpairs){
   ### place.
 
   ## pairsInOrder<-cbind(sizeDiffs,avgN)[order(sizeDiffs,-1*avgN,decreasing=FALSE),] ## sort by diff in size and then by avgN
-  pairsInOrder<-cbind(sizeDiffs,avgN,sizeDiffs/avgN)[order(sizeDiffs/avgN,-1*avgN,decreasing=FALSE),] ## sort by diff in size/avgN and then by avgN
+  ## pairsInOrder<-cbind(sizeDiffs,avgN,sizeDiffs/avgN)[order(sizeDiffs/avgN,-1*avgN,decreasing=FALSE),] ## sort by diff in size/avgN and then by avgN
+  ## Rank the pairs by a combination of closeness in size and absolute size, breaking ties by size
+  ordering<-order(penalty1(avgN-(sizeDiffs/2),avgN+(sizeDiffs/2)),avgN,decreasing=TRUE)
+  pairsInOrder<-cbind(sizeDiffs,avgN,avgN-(sizeDiffs/2),avgN+(sizeDiffs/2),penalty1(avgN-(sizeDiffs/2),avgN+(sizeDiffs/2)))[ordering,] ## sort by diff in size/avgN and then by avgN
 
   ### Third, start choosing pairs in order from best to worst, requiring that already chosen counties not be adjacent to any other counties subsequantly chosen
 
@@ -568,29 +580,81 @@ names(selectedPairs)<-names(pairsByState)
 sapply(selectedPairs,function(x){ if(is.data.frame(x)){ return(nrow(x)) } else { return(NA) }})
 
 
-experimentDat<-data.frame(do.call("rbind",selectedPairs),stringsAsFactors = FALSE)
-row.names(experimentDat)<-experimentDat$county
-experimentDat$n<-pairedDat[row.names(experimentDat),"n"]
-str(experimentDat)
-head(experimentDat)
-summary(experimentDat$n) ## sizes of counties in the experiment
+prelimExperimentDat<-data.frame(do.call("rbind",selectedPairs),stringsAsFactors = FALSE)
+row.names(prelimExperimentDat)<-prelimExperimentDat$county
+prelimExperimentDat$n<-pairedDat[row.names(prelimExperimentDat),"n"]
+str(prelimExperimentDat)
+head(prelimExperimentDat)
+summary(prelimExperimentDat$n) ## sizes of counties in the experiment
 ```
 
 ## Assign one county to possible treatment within each pair.
 
 ```{r}
 set.seed(20150101)
-experimentDat$Z<-unsplit(lapply(split(experimentDat$county,experimentDat$pair),function(x){ sample(c(0,1)) }),experimentDat$pair)
-head(experimentDat)
+prelimExperimentDat$Z<-unsplit(lapply(split(prelimExperimentDat$county,prelimExperimentDat$pair),function(x){ sample(c(0,1)) }),prelimExperimentDat$pair)
+head(prelimExperimentDat)
 
-stopifnot(all(tapply(experimentDat$Z,experimentDat$pair,sum)==1)) ## exactly 1 treated county per pair
+stopifnot(all(tapply(prelimExperimentDat$Z,prelimExperimentDat$pair,sum)==1)) ## exactly 1 treated county per pair
 
 ```
 
-An attempt at a map of our counties. Black are those counties assigned treatment. I think that this is very useful since we may want to go back and refine the algorithm a bit.
+## Preliminary Map
 
-```{r map, fig.show='asis',fig.keep='high'}
-png(file="map.png",width=1280,height=800)
+A map of our counties. Black are those counties assigned treatment. I think that this is very useful since we may want to go back and refine the algorithm a bit.
+
+```{r map, fig.show='asis',fig.keep='high', fig.cap="Dark counties assigned to some treatment. Light counties assigned to no treatment"}
+png(file="map.png",width=1920,height=1080)
+par(oma=rep(0,4))
+library(maps)
+data(countyMapEnv)
+data(usaMapEnv)
+data(county.fips)
+map('state',regions=states$State[states$Postal.Code %in% prelimExperimentDat$state],exact=FALSE,mar=c(1,1,1,1))
+map("county",regions=county.fips$polyname[county.fips$fips %in% as.numeric(prelimExperimentDat$county)],add=TRUE)
+map("county",regions=county.fips$polyname[county.fips$fips %in% as.numeric(prelimExperimentDat$county)[prelimExperimentDat$Z==1]],col="gray",fill=TRUE,add=TRUE)
+dev.off()
+```
+
+![A Map of the counties.](map.png)
+
+## Avoid cross-state treatment-to-control adjacency
+
+The map makes us realize that we could contaminate the controls because of adjacency across state lines. This is rare, so we just dump those pairs where this happens --- keeping the pairs with more farmers.
+
+```{r}
+
+newAdjMat<-adjMat[prelimExperimentDat$county[prelimExperimentDat$Z==0],prelimExperimentDat$county[prelimExperimentDat$Z==1]]
+
+## This many controls are adjacent to a treatment county
+sum(rowSums(newAdjMat))
+
+## Identify pairs with this problem. Some multiple adjacency
+
+table(rowSums(newAdjMat))
+table(colSums(newAdjMat))
+ctrls<-rownames(newAdjMat)[rowSums(newAdjMat)>0]
+
+crossStateAdjList<-apply(newAdjMat[ctrls,],1,function(x){ return(names(x[x>0,drop=FALSE]))})
+
+dumpPairs<-lapply(names(crossStateAdjList),function(nm){
+	       crossStateAdj<-prelimExperimentDat[c(nm,crossStateAdjList[[nm]]),]
+	       dropPairs<-crossStateAdj$pair[order(crossStateAdj$n,decreasing=TRUE)][-1]
+							   })
+names(dumpPairs)<-names(crossStateAdjList)
+
+experimentDat<-prelimExperimentDat[!(prelimExperimentDat$pair %in% unlist(dumpPairs)),]
+
+nextAdjMat<-adjMat[experimentDat$county[experimentDat$Z==0],experimentDat$county[experimentDat$Z==1]]
+stopifnot(sum(nextAdjMat)==0)
+
+```
+
+## Final Map
+
+
+```{r map2, fig.show='asis',fig.keep='high', fig.cap="Design without cross-state contamination. Dark counties assigned to some treatment. Light counties assigned to no treatment"}
+png(file="map2.png",width=1920,height=1080)
 par(oma=rep(0,4))
 library(maps)
 data(countyMapEnv)
@@ -602,7 +666,9 @@ map("county",regions=county.fips$polyname[county.fips$fips %in% as.numeric(exper
 dev.off()
 ```
 
-![A Map](map.png)
+![A Map of the design with no cross-state contamination.](map2.png)
+
+
 
 ## Calculate the number of treatment assignments.
 
