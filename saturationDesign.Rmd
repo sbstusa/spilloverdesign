@@ -16,6 +16,7 @@ output:
     fig_width: 4
     keep_md: true
     toc: true
+    highlight: pygments
   pdf_document:
     latex_engine: xelatex
     graphics: yes
@@ -144,9 +145,9 @@ County Adjacency:
 
 ## County Adjacency
 
-This file required a bit of reformatting work. This next run once and by hand at the command line. The countyAdjClean.txt file will be in the repository.
+This file required a bit of reformatting work. The file that does the cleanup is `gis/setupAdjData.sh`. It should be run once at the command line. The countyAdjClean.txt file will be in the repository. These lines just document the contents of `setupAdjData.sh`.
 
-```
+```{r engine = 'bash', eval = FALSE}
 ##These are bash commands.
 ## They are currently in gis/setupAdjData.sh which can be run at the command line.
 curl -O http://www2.census.gov/geo/docs/reference/county_adjacency.txt
