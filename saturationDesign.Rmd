@@ -87,7 +87,7 @@ The power of the design will depend on overall experimental pool $N$ (roughly 3 
 
 ## A Note on Inferential Frameworks
 
-The Blair et al 2015 piece uses a random effects/model-based mode for statistical inference. They claim that this very much simplifies the work required for power analysis. Although, in general, I tend to advocate randomization inference for randomized experiments, I suspect that we might gain from following their lead here, especially since our total pool of units is so large --- that the concerns about consistency and the CLT that one sidesteps with randomization infeerence in its permutation form might not be that important. That said, we might still want to check our results using a more direct randomization inference approach if we have few saturation categories.
+The Baird et al 2015 piece uses a random effects/model-based mode for statistical inference. They claim that this very much simplifies the work required for power analysis. Although, in general, I tend to advocate randomization inference for randomized experiments, I suspect that we might gain from following their lead here, especially since our total pool of units is so large --- that the concerns about consistency and the CLT that one sidesteps with randomization infeerence in its permutation form might not be that important. That said, we might still want to check our results using a more direct randomization inference approach if we have few saturation categories.
 
 
 # What do our data look like?
@@ -707,6 +707,9 @@ fn(sol$root)
 sum(experimentDat$n[experimentDat$Z==1] * sol$root)
 
 ```
+
+## Summary:
+The treatment assignment at the county level was made within pairs. The pairs themselves are only made within state. So, in the analysis phase, we can use pair as the blocking variable without need for a separate state blocking variable.
 
 ## Save the file for use later
 
